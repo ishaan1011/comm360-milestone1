@@ -1,12 +1,45 @@
 import React, { useContext } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext } from './context/AuthContext.jsx';
+import { Toaster } from 'react-hot-toast';
+import Layout from './components/Layout.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import LandingPage from './pages/LandingPage.jsx'; // your meeting UI
+import DashboardPage from './pages/DashboardPage.jsx';
+import LandingPage from './pages/LandingPage.jsx';
+import MeetingPage from './pages/MeetingPage.jsx';
+import ContactsPage from './pages/ContactsPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 
 export default function App() {
   const { user } = useContext(AuthContext);
-  // if not logged in, show login/register
-  if (!user) return <LoginPage />;
-  // otherwise show your main app
-  return <LandingPage />;
+
+  // If not logged in, show login page
+  if (!user) {
+    return (
+      <>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+        <Toaster position="top-right" />
+      </>
+    );
+  }
+
+  // If logged in, show the main app with layout
+  return (
+    <>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/meetings" element={<LandingPage />} />
+          <Route path="/meeting/:roomId" element={<MeetingPage />} />
+          <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+      <Toaster position="top-right" />
+    </>
+  );
 }
