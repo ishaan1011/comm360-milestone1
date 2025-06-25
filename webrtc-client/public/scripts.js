@@ -1699,3 +1699,26 @@ export {
   addNewIceCandidate,
   cleanup
 };
+
+// Test backend connection
+async function testBackendConnection() {
+  try {
+    console.log('🔍 Testing backend connection...');
+    const response = await fetch(`${SIGNALING_SERVER_URL}/healthz`);
+    if (response.ok) {
+      console.log('✅ Backend is connected and responding!');
+      return true;
+    } else {
+      console.error('❌ Backend responded with status:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Backend connection failed:', error.message);
+    return false;
+  }
+}
+
+// Test connection on page load
+document.addEventListener('DOMContentLoaded', () => {
+  testBackendConnection();
+});
