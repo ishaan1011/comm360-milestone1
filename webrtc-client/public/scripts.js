@@ -3,6 +3,13 @@
  * Enhanced from original WebRTC implementation
  */
 
+// Ensure SIGNALING_SERVER_URL is available
+if (!window.SIGNALING_SERVER_URL) {
+  console.error('SIGNALING_SERVER_URL is not defined. Please check your index.html configuration.');
+  throw new Error('SIGNALING_SERVER_URL is required but not defined');
+}
+
+const SIGNALING_SERVER_URL = window.SIGNALING_SERVER_URL;
 
 // ── JWT & Google Auth Integration ─────────────────────────────────────
 const authContainer   = document.getElementById('auth-container');
@@ -109,7 +116,7 @@ let mediaRecorder;
 let chunkTimer;
 let recordedChunks = [];
 let sessionStartTime = null;
-let sessionId = null;   // identify this “recording session” across chunks
+let sessionId = null;   // identify this "recording session" across chunks
 let chunkIndex = 0;
 const chatLog = [];
 // ──────────────────────────────
@@ -179,12 +186,6 @@ let elements = {};
 state.userName = `User-${Math.floor(Math.random() * 100000)}`;
 if (elements.displayNameInput) elements.displayNameInput.value = state.userName;
 if (elements.userNameEl) elements.userNameEl.textContent = state.userName;
-
-// Signaling server URL injected in index.html
-const SIGNALING_SERVER_URL = window.SIGNALING_SERVER_URL;
-if (!SIGNALING_SERVER_URL) {
-  console.error('SIGNALING_SERVER_URL is not defined.');
-}
 
 // Socket.io initialization - will connect after room is selected
 let socket = null;
@@ -370,7 +371,7 @@ async function loadRecordings() {
   // Show the feed container now that we have at least one clip
   feed.style.display = 'block';
 
-  // 2) Render each clip as a full‐viewport “reel”
+  // 2) Render each clip as a full-viewport "reel"
   clips
     // (optional) sort by start time
     .sort((a, b) => new Date(a.metadata.startTime) - new Date(b.metadata.startTime))
@@ -786,7 +787,7 @@ function setupEventListeners() {
   addAvatarBtn?.addEventListener('click', () => {
     console.log('🟢 avatar button clicked');
     avatarPanel.classList.toggle('show');
-    // when opening, enable “Start” button
+    // when opening, enable "Start" button
     if (!avatarPanel.classList.contains('show')) {
       startTalk.disabled = false;
     }
@@ -1071,7 +1072,7 @@ function startNextSegment() {
   };
 
   mediaRecorder.onstop = () => {
-    // if Stop button wasn't clicked (i.e. it’s still disabled = false), schedule next
+    // if Stop button wasn't clicked (i.e. it's still disabled = false), schedule next
     const stopBtn = document.getElementById('stop-recording');
     if (stopBtn.disabled) return;
     startNextSegment();
@@ -1494,7 +1495,7 @@ async function setupPeerConnection(offerObj = null) {
     iceTransportPolicy: "relay"   // ← force relay (TURN) only
   });
 
-  // ── DEBUG: watch ICE‐connection & overall connection states ───────────
+  // ── DEBUG: watch ICE-connection & overall connection states ───────────
   state.peerConnection.addEventListener('iceconnectionstatechange', () => {
     console.log('❄️ ICE connection state:', state.peerConnection.iceConnectionState);
   });
@@ -1502,7 +1503,7 @@ async function setupPeerConnection(offerObj = null) {
   state.peerConnection.addEventListener('connectionstatechange', () => {
     console.log('🔗 Peer connection state:', state.peerConnection.connectionState);
     if (state.peerConnection.connectionState === 'failed') {
-      // if we hit "failed", dump any succeeded candidate‐pairs for post‐mortem
+      // if we hit "failed", dump any succeeded candidate-pairs for post-mortem
       state.peerConnection.getStats().then(stats => {
         stats.forEach(report => {
           if (report.type === 'candidate-pair' && report.state === 'succeeded') {
