@@ -170,8 +170,22 @@ export default function MeetingPage() {
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
         {/* Local Video */}
         <div className="relative bg-gray-800 rounded-lg overflow-hidden">
-          <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-          {!isVideoEnabled && (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+          {!localStream && (
+            <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+              <div className="text-center">
+                <VideoOff size={48} className="text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-400">No Camera</p>
+              </div>
+            </div>
+          )}
+          {!isVideoEnabled && localStream && (
             <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
               <div className="text-center">
                 <VideoOff size={48} className="text-gray-400 mx-auto mb-2" />
