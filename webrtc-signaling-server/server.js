@@ -28,6 +28,7 @@ import rateLimit from 'express-rate-limit';
 import { connectDB } from './src/config/database.js';
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ── connect MongoDB ─────────────────────────────────────────────
 connectDB()
