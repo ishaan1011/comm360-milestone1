@@ -42,7 +42,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // ─── Enable CORS for your front-end origin ──────────────────────────────────
 app.use(cors({
-  origin: process.env.CORS_ORIGIN,   // your Vercel URL
+  origin: [
+    'https://webrtc-client-sigma.vercel.app',
+    'https://webrtc-client-me7n-h7wak90mk-simrats-projects-564757ad.vercel.app',
+    // Add more Vercel preview URLs here as needed
+    // You can also use a function or regex for more flexibility
+  ],
   methods: ['GET', 'POST']
 }));
 // ─────────────────────────────────────────────────────────────────────────────
