@@ -45,13 +45,35 @@ export default function MeetingPage() {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
 
+  // Ensure local video always gets the stream
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  // Ensure remote video elements always get their streams
+  useEffect(() => {
+    remoteStreams.forEach((stream, peerId) => {
+      const ref = document.getElementById(`remote-video-${peerId}`);
+      if (ref && stream) {
+        ref.srcObject = stream;
+      }
+    });
+  }, [remoteStreams]);
+
   const toggleAudio = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
+        console.log('Audio track enabled:', audioTrack.enabled);
+      } else {
+        console.error('No audio track found');
       }
+    } else {
+      console.error('No localStream for audio toggle');
     }
   };
 
@@ -61,7 +83,12 @@ export default function MeetingPage() {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
+        console.log('Video track enabled:', videoTrack.enabled);
+      } else {
+        console.error('No video track found');
       }
+    } else {
+      console.error('No localStream for video toggle');
     }
   };
 
@@ -158,7 +185,7 @@ export default function MeetingPage() {
         {Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
           <div key={peerId} className="relative bg-gray-800 rounded-lg overflow-hidden">
             <video
-              ref={ref => ref && addRemoteVideoRef(peerId, ref)}
+              id={`remote-video-${peerId}`}
               autoPlay
               playsInline
               className="w-full h-full object-cover"
