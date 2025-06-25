@@ -15,7 +15,7 @@ import {
   Users,
   MessageCircle,
   Share,
-  Record,
+  CircleDot,
   StopCircle
 } from 'lucide-react';
 
@@ -338,7 +338,7 @@ export default function MeetingPage() {
                   : 'bg-gray-600 hover:bg-gray-500 text-white'
               }`}
             >
-              {isRecording ? <StopCircle size={20} /> : <Record size={20} />}
+              {isRecording ? <StopCircle size={20} /> : <CircleDot size={20} />}
             </button>
 
             <button
