@@ -49,15 +49,39 @@ document.addEventListener('DOMContentLoaded', () => {
         fullName: authFullName.value
       })
     };
-    const res = await fetch(`${SIGNALING_SERVER_URL}/api/auth/${op}`, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) return alert('Auth failed');
-    const { token } = await res.json();
-    localStorage.setItem('token', token);
-    initApp();
+    
+    console.log('Sending auth request:', { op, payload });
+    
+    try {
+      const res = await fetch(`${SIGNALING_SERVER_URL}/api/auth/${op}`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      console.log('Response status:', res.status, res.statusText);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Auth failed:', res.status, errorText);
+        alert(`Auth failed: ${res.status} - ${errorText}`);
+        return;
+      }
+      
+      const data = await res.json();
+      console.log('Auth successful:', data);
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        initApp();
+      } else {
+        console.error('No token in response:', data);
+        alert('Auth failed: No token received');
+      }
+    } catch (error) {
+      console.error('Auth request failed:', error);
+      alert(`Auth failed: ${error.message}`);
+    }
   });
 
   // Google Sign-In
