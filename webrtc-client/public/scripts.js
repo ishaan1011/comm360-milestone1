@@ -11,75 +11,96 @@ if (!window.SIGNALING_SERVER_URL) {
 
 const SIGNALING_SERVER_URL = window.SIGNALING_SERVER_URL;
 
-// ── JWT & Google Auth Integration ─────────────────────────────────────
-const authContainer   = document.getElementById('auth-container');
-const authForm        = document.getElementById('auth-form');
-const authTitle       = document.getElementById('auth-title');
-const authEmail       = document.getElementById('auth-email');
-const authPassword    = document.getElementById('auth-password');
-const authUsername    = document.getElementById('auth-username');
-const authFullName    = document.getElementById('auth-fullName');
-const registerFields  = document.getElementById('register-fields');
-const authSubmit      = document.getElementById('auth-submit');
-const toggleRegister  = document.getElementById('toggle-register');
-let isRegister = false;
+// Wait for DOM to be fully loaded before setting up event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  // ── JWT & Google Auth Integration ─────────────────────────────────────
+  const authContainer   = document.getElementById('auth-container');
+  const authForm        = document.getElementById('auth-form');
+  const authTitle       = document.getElementById('auth-title');
+  const authEmail       = document.getElementById('auth-email');
+  const authPassword    = document.getElementById('auth-password');
+  const authUsername    = document.getElementById('auth-username');
+  const authFullName    = document.getElementById('auth-fullName');
+  const registerFields  = document.getElementById('register-fields');
+  const authSubmit      = document.getElementById('auth-submit');
+  const toggleRegister  = document.getElementById('toggle-register');
+  let isRegister = false;
 
-// Toggle Login <-> Register
-toggleRegister.addEventListener('click', () => {
-  isRegister = !isRegister;
-  authTitle.textContent = isRegister ? 'Register' : 'Log In';
-  authSubmit.textContent = isRegister ? 'Register' : 'Log In';
-  toggleRegister.textContent = isRegister
-    ? 'Have an account? Log In'
-    : 'Need an account? Register';
-  registerFields.classList.toggle('d-none', !isRegister);
-});
-
-// Handle form submit
-authForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const op = isRegister ? 'register' : 'login';
-  const payload = {
-    email:    authEmail.value,
-    password: authPassword.value,
-    ...(isRegister && {
-      username: authUsername.value,
-      fullName: authFullName.value
-    })
-  };
-  const res = await fetch(`${SIGNALING_SERVER_URL}/api/auth/${op}`, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify(payload)
+  // Toggle Login <-> Register
+  toggleRegister.addEventListener('click', () => {
+    isRegister = !isRegister;
+    authTitle.textContent = isRegister ? 'Register' : 'Log In';
+    authSubmit.textContent = isRegister ? 'Register' : 'Log In';
+    toggleRegister.textContent = isRegister
+      ? 'Have an account? Log In'
+      : 'Need an account? Register';
+    registerFields.classList.toggle('d-none', !isRegister);
   });
-  if (!res.ok) return alert('Auth failed');
-  const { token } = await res.json();
-  localStorage.setItem('token', token);
-  initApp();
-});
 
-// Google Sign-In
-/* global google */
-google.accounts.id.initialize({
-  client_id: window.GOOGLE_CLIENT_ID,
-  callback: async ({ credential }) => {
-    const res = await fetch(`${SIGNALING_SERVER_URL}/api/auth/google`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ idToken: credential })
+  // Handle form submit
+  authForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const op = isRegister ? 'register' : 'login';
+    const payload = {
+      email:    authEmail.value,
+      password: authPassword.value,
+      ...(isRegister && {
+        username: authUsername.value,
+        fullName: authFullName.value
+      })
+    };
+    const res = await fetch(`${SIGNALING_SERVER_URL}/api/auth/${op}`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
     });
+    if (!res.ok) return alert('Auth failed');
     const { token } = await res.json();
     localStorage.setItem('token', token);
     initApp();
-  }
+  });
+
+  // Google Sign-In
+  /* global google */
+  google.accounts.id.initialize({
+    client_id: window.GOOGLE_CLIENT_ID,
+    callback: async ({ credential }) => {
+      const res = await fetch(`${SIGNALING_SERVER_URL}/api/auth/google`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ idToken: credential })
+      });
+      const { token } = await res.json();
+      localStorage.setItem('token', token);
+      initApp();
+    }
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('googleSignIn'),
+    { theme:'outline', size:'large' }
+  );
+
+  // Test backend connection
+  testBackendConnection();
 });
-google.accounts.id.renderButton(
-  document.getElementById('googleSignIn'),
-  { theme:'outline', size:'large' }
-);
+
+// Handle initial page load
+window.onload = function() {
+  // If we already have a JWT, skip straight to the app:
+  if (localStorage.getItem('token')) {
+    initApp();
+  } else {
+    // Otherwise, show auth UI and hide landing/meeting
+    const authContainer = document.getElementById('auth-container');
+    authContainer.classList.remove('d-none');
+    document.getElementById('landing-container').classList.add('d-none');
+    document.getElementById('meeting-container').classList.add('d-none');
+  }
+};
 
 // Once authenticated, hide auth UI and start the app
 function initApp() {
+  const authContainer = document.getElementById('auth-container');
   authContainer.classList.add('d-none');
   document.getElementById('landing-container').classList.remove('d-none');
   init();  // your existing init()
@@ -1675,18 +1696,6 @@ function cleanup() {
   
   console.log('📞 Call ended');
 }
-
-window.onload = function() {
-  // If we already have a JWT, skip straight to the app:
-  if (localStorage.getItem('token')) {
-    initApp();
-  } else {
-    // Otherwise, show auth UI and hide landing/meeting
-    authContainer.classList.remove('d-none');
-    document.getElementById('landing-container').classList.add('d-none');
-    document.getElementById('meeting-container').classList.add('d-none');
-  }
-};
 
 // Export functions for possible external use
 export { 
