@@ -37,9 +37,20 @@ export default function MeetingPage() {
   const chatRef = useRef(null);
 
   useEffect(() => {
-    if (roomId && user) joinMeeting(roomId);
+    if (roomId && user) {
+      console.log('Calling joinMeeting for room:', roomId);
+      joinMeeting(roomId);
+    }
     return () => leaveMeeting();
   }, [roomId, user, joinMeeting, leaveMeeting]);
+
+  useEffect(() => {
+    if (!localStream) {
+      console.warn('No localStream: camera/mic may not be available or permission denied.');
+    } else {
+      console.log('localStream set:', localStream);
+    }
+  }, [localStream]);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -177,7 +188,15 @@ export default function MeetingPage() {
             playsInline
             className="w-full h-full object-cover"
           />
-          {!localStream && (
+          {!localStream && error && (
+            <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+              <div className="text-center">
+                <VideoOff size={48} className="text-red-400 mx-auto mb-2" />
+                <p className="text-red-400">{error}</p>
+              </div>
+            </div>
+          )}
+          {!localStream && !error && (
             <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
               <div className="text-center">
                 <VideoOff size={48} className="text-gray-400 mx-auto mb-2" />
