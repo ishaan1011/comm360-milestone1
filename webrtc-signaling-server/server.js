@@ -46,6 +46,7 @@ app.use(cors({
   origin: [
     'https://webrtc-client-sigma.vercel.app',
     'https://webrtc-client-me7n-h7wak90mk-simrats-projects-564757ad.vercel.app',
+    'https://webrtc-client-me7n.vercel.app',
     // Add more Vercel preview URLs here as needed
     // You can also use a function or regex for more flexibility
   ],
