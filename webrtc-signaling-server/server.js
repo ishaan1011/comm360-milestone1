@@ -47,10 +47,29 @@ app.use(cors({
     'https://webrtc-client-sigma.vercel.app',
     'https://webrtc-client-me7n-h7wak90mk-simrats-projects-564757ad.vercel.app',
     'https://webrtc-client-me7n.vercel.app',
+    'https://webrtc-client-me7n-jett88wdy-simrats-projects-564757ad.vercel.app',
     // Add more Vercel preview URLs here as needed
     // You can also use a function or regex for more flexibility
+    (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Allow all Vercel preview URLs
+      if (origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow localhost for development
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
+    }
   ],
-  methods: ['GET', 'POST']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -347,8 +366,29 @@ const server = http.createServer(app);
 // Socket.io with CORS set by env var (e.g. your Vercel URL)
 const io = new SocketIO(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN,
-    methods: ['GET', 'POST']
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Allow all Vercel preview URLs
+      if (origin.includes('vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow localhost for development
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // Allow specific origins from environment variable
+      if (process.env.CORS_ORIGIN && origin === process.env.CORS_ORIGIN) {
+        return callback(null, true);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
