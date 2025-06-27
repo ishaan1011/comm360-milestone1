@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { User, Users, Hash, Plus, Circle, Star, Search, MoreVertical, Edit, Trash2, Reply, Paperclip, Smile } from 'lucide-react';
+import { User, Users, Hash, Plus, Search, MoreVertical } from 'lucide-react';
+import SidebarConversation from '../components/messages/SidebarConversation';
+import ChatWindow from '../components/messages/ChatWindow';
+import ChatInput from '../components/messages/ChatInput';
+import SettingsPanel from '../components/messages/SettingsPanel';
 
 const mockDMs = [
   { id: 'dm-1', name: 'John Doe', avatar: null, status: 'online', unread: 2, type: 'dm', messages: [
@@ -62,6 +66,10 @@ export default function MessagesPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [reactions, setReactions] = useState({});
+  const [replyTo, setReplyTo] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState({ notifications: true, sound: true, dark: false });
+  const [notification, setNotification] = useState(null);
 
   // Filter conversations by search
   const filteredConversations = allConversations.map(section => ({
@@ -71,6 +79,8 @@ export default function MessagesPage() {
 
   const handleSelect = (conv) => {
     setSelected(conv);
+    setReplyTo(null);
+    setShowEmojiPicker(false);
     // Mark as read (mock)
     setAllConversations(prev => prev.map(section => ({
       ...section,
@@ -79,18 +89,28 @@ export default function MessagesPage() {
   };
 
   const handleSend = () => {
-    if (input.trim()) {
+    if (input.trim() || uploadFile) {
       const newMsg = {
         id: Date.now(),
         sender: 'You',
         text: input,
+        file: uploadFile
+          ? {
+              name: uploadFile.name,
+              type: uploadFile.type,
+              url: URL.createObjectURL(uploadFile),
+            }
+          : undefined,
         timestamp: new Date().toISOString(),
+        replyTo: replyTo ? replyTo.id : undefined,
       };
       setSelected(prev => ({
         ...prev,
         messages: [...prev.messages, newMsg],
       }));
       setInput('');
+      setUploadFile(null);
+      setReplyTo(null);
       setTyping(false);
     }
   };
@@ -103,8 +123,13 @@ export default function MessagesPage() {
   const handleEditSave = () => {
     setSelected(prev => ({
       ...prev,
-      messages: prev.messages.map(m => m.id === editMsgId ? { ...m, text: editInput } : m),
+      messages: prev.messages.map(m => m.id === editMsgId ? { ...m, text: editInput, edited: true } : m),
     }));
+    setEditMsgId(null);
+    setEditInput('');
+  };
+
+  const handleEditCancel = () => {
     setEditMsgId(null);
     setEditInput('');
   };
@@ -130,23 +155,11 @@ export default function MessagesPage() {
     const file = e.target.files[0];
     if (file) {
       setUploadFile(file);
-      // Add a mock message for the file
-      const newMsg = {
-        id: Date.now(),
-        sender: 'You',
-        text: '',
-        file: {
-          name: file.name,
-          type: file.type,
-          url: URL.createObjectURL(file),
-        },
-        timestamp: new Date().toISOString(),
-      };
-      setSelected(prev => ({
-        ...prev,
-        messages: [...prev.messages, newMsg],
-      }));
     }
+  };
+
+  const handleRemoveFile = () => {
+    setUploadFile(null);
   };
 
   const handleEmojiClick = (emoji, msgId) => {
@@ -157,11 +170,55 @@ export default function MessagesPage() {
     setShowEmojiPicker(false);
   };
 
+  const handleReply = (msg) => {
+    setReplyTo(msg);
+  };
+
   // Group messages by date
   const grouped = groupMessagesByDate(selected.messages);
 
+  // Mock real-time bot/user
+  React.useEffect(() => {
+    if (!selected) return;
+    const botNames = ['Bot Alice', 'Bot Bob'];
+    const botInterval = setInterval(() => {
+      // Only send if user is not viewing the bot's conversation
+      const botConv = allConversations.flatMap(s => s.items).find(c => c.name === 'Bot Alice');
+      if (botConv && selected.id !== botConv.id) {
+        const newMsg = {
+          id: Date.now(),
+          sender: 'Bot Alice',
+          text: 'This is a real-time mock message! ' + Math.floor(Math.random() * 1000),
+          timestamp: new Date().toISOString(),
+        };
+        setAllConversations(prev => prev.map(section => ({
+          ...section,
+          items: section.items.map(item => item.id === botConv.id ? { ...item, messages: [...item.messages, newMsg], unread: (item.unread || 0) + 1 } : item)
+        })));
+        if (settings.notifications) {
+          setNotification({
+            message: `New message from ${botConv.name}`,
+            convId: botConv.id,
+          });
+          if (settings.sound) {
+            const audio = new Audio('https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa4c7b.mp3');
+            audio.play();
+          }
+        }
+      }
+    }, 10000);
+    return () => clearInterval(botInterval);
+  }, [selected, allConversations, settings.notifications, settings.sound]);
+
+  // Dismiss notification on conversation open
+  React.useEffect(() => {
+    if (notification && selected.id === notification.convId) {
+      setNotification(null);
+    }
+  }, [selected, notification]);
+
   return (
-    <div className="flex h-[80vh] bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className={`flex h-[80vh] bg-white rounded-lg shadow-lg overflow-hidden${settings.dark ? ' dark' : ''}`}>
       {/* Sidebar */}
       <div className="w-80 bg-secondary-50 border-r border-secondary-200 flex flex-col">
         <div className="p-4 border-b border-secondary-200 font-bold text-lg flex items-center justify-between">
@@ -191,31 +248,15 @@ export default function MessagesPage() {
                 )}
               </div>
               {section.items.map(conv => (
-                <div
+                <SidebarConversation
                   key={conv.id}
-                  className={`flex items-center px-4 py-2 cursor-pointer hover:bg-primary-100 rounded transition-colors ${selected.id === conv.id ? 'bg-primary-100 text-primary-700' : 'text-secondary-700'}`}
-                  onClick={() => handleSelect(conv)}
-                >
-                  <div className="relative mr-3">
-                    {conv.avatar ? (
-                      <img src={conv.avatar} alt={conv.name} className="h-8 w-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-700 font-bold">
-                        {getInitials(conv.name)}
-                      </div>
-                    )}
-                    {conv.status && (
-                      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${conv.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                    )}
-                  </div>
-                  <span className="flex-1 truncate">{conv.name}</span>
-                  <button onClick={e => { e.stopPropagation(); handleStar(conv.id); }} className="ml-2 text-yellow-400 hover:text-yellow-500">
-                    <Star fill={starred.includes(conv.id) ? 'currentColor' : 'none'} className="h-4 w-4" />
-                  </button>
-                  {conv.unread > 0 && (
-                    <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{conv.unread}</span>
-                  )}
-                </div>
+                  conv={conv}
+                  isActive={selected.id === conv.id}
+                  onSelect={() => handleSelect(conv)}
+                  onStar={() => handleStar(conv.id)}
+                  starred={starred.includes(conv.id)}
+                  getInitials={getInitials}
+                />
               ))}
             </div>
           ))}
@@ -238,99 +279,61 @@ export default function MessagesPage() {
               <span className={`h-3 w-3 rounded-full ${selected.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
             )}
           </div>
-          <button className="p-2 hover:bg-secondary-100 rounded"><MoreVertical className="h-5 w-5" /></button>
-        </div>
-        {/* Chat messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-secondary-50">
-          {Object.entries(grouped).map(([date, msgs]) => (
-            <div key={date}>
-              <div className="text-center text-xs text-secondary-400 mb-2">{date}</div>
-              <div className="space-y-2">
-                {msgs.map(msg => (
-                  <div key={msg.id} className={`flex ${msg.sender === 'You' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs px-4 py-2 rounded-lg relative group ${msg.sender === 'You' ? 'bg-primary-500 text-white' : 'bg-white text-secondary-900 border border-secondary-200'}`}> 
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">{msg.sender}</div>
-                        <div className="text-xs text-secondary-400 ml-2">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                      </div>
-                      {editMsgId === msg.id ? (
-                        <div className="flex items-center mt-1">
-                          <input value={editInput} onChange={e => setEditInput(e.target.value)} className="flex-1 px-2 py-1 border rounded mr-2 text-black" />
-                          <button onClick={handleEditSave} className="text-primary-600 text-xs font-semibold mr-1">Save</button>
-                          <button onClick={() => setEditMsgId(null)} className="text-secondary-400 text-xs">Cancel</button>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-base mt-1">{msg.text}</div>
-                          {msg.file && (
-                            <div className="mt-2">
-                              {msg.file.type.startsWith('image/') ? (
-                                <img src={msg.file.url} alt={msg.file.name} className="max-w-[200px] rounded" />
-                              ) : (
-                                <a href={msg.file.url} download={msg.file.name} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">{msg.file.name}</a>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {/* Emoji reactions */}
-                      <div className="flex space-x-1 mt-2">
-                        {(reactions[msg.id] || []).map((emoji, i) => (
-                          <span key={i} className="text-lg cursor-pointer">{emoji}</span>
-                        ))}
-                        <button onClick={() => setShowEmojiPicker(showEmojiPicker === msg.id ? false : msg.id)} className="ml-1 p-1 rounded hover:bg-secondary-100"><Smile className="h-4 w-4" /></button>
-                        {showEmojiPicker === msg.id && (
-                          <div className="absolute z-10 bg-white border rounded shadow p-2 flex flex-wrap mt-1">
-                            {emojiList.map(emoji => (
-                              <span key={emoji} className="text-xl cursor-pointer m-1" onClick={() => handleEmojiClick(emoji, msg.id)}>{emoji}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {/* Message actions */}
-                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex space-x-1">
-                        <button className="p-1 hover:bg-secondary-100 rounded"><Reply className="h-4 w-4" /></button>
-                        {msg.sender === 'You' && (
-                          <>
-                            <button onClick={() => handleEdit(msg)} className="p-1 hover:bg-secondary-100 rounded"><Edit className="h-4 w-4" /></button>
-                            <button onClick={() => handleDelete(msg.id)} className="p-1 hover:bg-secondary-100 rounded"><Trash2 className="h-4 w-4" /></button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {/* Typing indicator (mock) */}
-          {typing && <div className="text-xs text-secondary-400">Someone is typing...</div>}
-        </div>
-        {/* Chat input */}
-        <div className="p-4 border-t border-secondary-200 bg-white">
-          <div className="flex space-x-2 items-center">
-            <label className="cursor-pointer p-2 rounded hover:bg-secondary-100">
-              <Paperclip className="h-5 w-5" />
-              <input type="file" className="hidden" onChange={handleFileChange} />
-            </label>
-            <input
-              type="text"
-              value={input}
-              onChange={e => { setInput(e.target.value); setTyping(true); }}
-              onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-            <button
-              onClick={handleSend}
-              className="bg-primary-500 text-white px-6 py-2 rounded-lg hover:bg-primary-600 transition-colors"
-            >Send</button>
+          <div className="flex items-center space-x-2">
+            <button onClick={() => setSettingsOpen(true)} className="p-2 hover:bg-secondary-100 rounded" title="Settings">
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 8c.13.21.22.45.22.7 0 .25-.09.49-.22.7z"></path></svg>
+            </button>
           </div>
         </div>
+        {/* Reply context */}
+        {replyTo && (
+          <div className="px-6 py-2 bg-secondary-100 text-secondary-700 flex items-center space-x-2">
+            <span>Replying to:</span>
+            <span className="italic truncate max-w-xs">{replyTo.text || replyTo.file?.name}</span>
+            <button onClick={() => setReplyTo(null)} className="ml-2 text-secondary-400 hover:text-secondary-600">×</button>
+          </div>
+        )}
+        {/* Chat messages */}
+        <ChatWindow
+          grouped={grouped}
+          selected={selected}
+          reactions={reactions}
+          showEmojiPicker={showEmojiPicker}
+          setShowEmojiPicker={setShowEmojiPicker}
+          emojiList={emojiList}
+          editMsgId={editMsgId}
+          editInput={editInput}
+          setEditInput={setEditInput}
+          handleEditSave={handleEditSave}
+          handleEditCancel={handleEditCancel}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onReply={handleReply}
+          onEmoji={handleEmojiClick}
+          replyContext={replyTo}
+          typing={typing}
+        />
+        {/* Chat input */}
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSend={handleSend}
+          onFileChange={handleFileChange}
+          uploadFile={uploadFile}
+          onRemoveFile={handleRemoveFile}
+          onShowEmojiPicker={() => setShowEmojiPicker('input')}
+        />
+        {notification && (
+          <div className="fixed top-6 right-6 z-50 bg-primary-600 text-white px-4 py-2 rounded shadow-lg animate-fade-in">
+            {notification.message}
+            <button onClick={() => setNotification(null)} className="ml-4 text-white">×</button>
+          </div>
+        )}
+        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} setSettings={setSettings} />
       </div>
       {/* New Conversation Modal (mock) */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 transition-opacity animate-fade-in">
           <div className="bg-white rounded-lg shadow-lg p-8 w-96">
             <h2 className="text-lg font-bold mb-4">New {modalType.charAt(0).toUpperCase() + modalType.slice(1)}</h2>
             <input className="w-full mb-4 px-3 py-2 border rounded" placeholder={`Enter ${modalType} name...`} />
