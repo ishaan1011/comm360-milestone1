@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage.jsx';
 import MeetingPage from './pages/MeetingPage.jsx';
 import ContactsPage from './pages/ContactsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import MessagesPage from './pages/MessagesPage.jsx';
 
 export default function App() {
   const { user } = useContext(AuthContext);
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/meeting/:roomId" element={<MeetingPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
