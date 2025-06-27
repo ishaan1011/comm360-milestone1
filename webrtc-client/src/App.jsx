@@ -4,6 +4,7 @@ import { AuthContext } from './context/AuthContext.jsx';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import MeetingPage from './pages/MeetingPage.jsx';
@@ -18,6 +19,7 @@ export default function App() {
     return (
       <>
         <Routes>
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
