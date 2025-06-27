@@ -4,7 +4,7 @@ class AuthService {
   // Register a new user
   async register(userData) {
     try {
-      const response = await API.post('/api/auth/register', userData);
+      const response = await API.post('/auth/register', userData);
       return { success: true, data: response.data };
     } catch (error) {
       return { 
@@ -17,7 +17,7 @@ class AuthService {
   // Login user
   async login(email, password) {
     try {
-      const response = await API.post('/api/auth/login', { email, password });
+      const response = await API.post('/auth/login', { email, password });
       return { success: true, data: response.data };
     } catch (error) {
       return { 
@@ -30,7 +30,7 @@ class AuthService {
   // Google OAuth login
   async googleAuth(idToken) {
     try {
-      const response = await API.post('/api/auth/google', { idToken });
+      const response = await API.post('/auth/google', { idToken });
       return { success: true, data: response.data };
     } catch (error) {
       return { 
@@ -43,7 +43,7 @@ class AuthService {
   // Get current user profile
   async getCurrentUser() {
     try {
-      const response = await API.get('/api/auth/me');
+      const response = await API.get('/auth/me');
       return { success: true, data: response.data };
     } catch (error) {
       return { 
@@ -56,7 +56,7 @@ class AuthService {
   // Validate token
   async validateToken() {
     try {
-      const response = await API.get('/api/auth/me');
+      const response = await API.get('/auth/me');
       return { success: true, data: response.data };
     } catch (error) {
       return { success: false, error: 'Invalid token' };
