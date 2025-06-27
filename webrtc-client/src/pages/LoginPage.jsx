@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+console.log('Google Client ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
 /* global google */
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -37,9 +38,14 @@ export default function LoginPage() {
 
   // 1) Initialize Google Identity SDK once
   useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.warn('Missing VITE_GOOGLE_CLIENT_ID!');
+      return;
+    }
     if (window.google && !google.accounts.id.isInitialized) {
       google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        client_id: clientId,
         callback: handleGoogleResponse,
       });
     }
