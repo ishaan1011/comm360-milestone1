@@ -11,13 +11,15 @@ import {
   X, 
   User,
   Bell,
-  Search
+  Search,
+  MessageSquare
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Meetings', href: '/meetings', icon: Video },
+  { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Contacts', href: '/contacts', icon: Users },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
