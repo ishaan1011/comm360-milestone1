@@ -1,10 +1,9 @@
-import React, { useState, useContext, useEffect } from 'react';
-console.log('Google Client ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
-/* global google */
+import React, { useState, useContext } from 'react';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
+import { useGoogleLogin } from '@react-oauth/google';
 
 import { 
   Mail, 
@@ -36,37 +35,23 @@ export default function LoginPage() {
   const { login, googleLogin, error, clearError } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // 1) Initialize Google Identity SDK once
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      console.warn('Missing VITE_GOOGLE_CLIENT_ID!');
-      return;
-    }
-    if (window.google && !google.accounts.id.isInitialized) {
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleResponse,
-        ux_mode: 'popup',
-      });
-    }
-  }, []);
-
-  // 2) Callback invoked by Google SDK
-  const handleGoogleResponse = async (response) => {
-    const { credential: idToken } = response;
-    try {
-      const result = await googleLogin(idToken);
-      if (result.success) {
-        navigate('/');       // go to dashboard on success
-      } else {
-        alert(result.error); // show any error
+  const handleGoogleSignIn = useGoogleLogin({
+    onSuccess: async credentialResponse => {
+      try {
+        // this is your existing AuthContext.googleLogin()
+        await googleLogin(credentialResponse.credential);
+        navigate('/');
+      } catch (err) {
+        console.error('Google login failed', err);
+        alert('Google login error');
       }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
+    },
+    onError: () => {
+      console.error('Google login encountered an error');
+      alert('Google login failed');
+    },
+    flow: 'implicit', // popup-based flow
+  });
 
   // Animate features on mount
   useEffect(() => {
@@ -471,7 +456,7 @@ export default function LoginPage() {
 
             {/* Google Sign In */}
             <motion.button
-              onClick={() => window.google && google.accounts.id.prompt()}
+              onClick={handleGoogleSignIn}
               className="w-full bg-white border-2 border-gray-200 text-gray-700 py-4 px-6 rounded-xl font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-3 group"
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
