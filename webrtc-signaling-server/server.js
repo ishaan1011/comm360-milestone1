@@ -595,7 +595,7 @@ io.on('connection', async socket => {
 });
 
 // API endpoint to get active rooms
-app.get('/rooms', (req, res) => {
+app.get('/api/rooms', (req, res) => {
   const activeRooms = Object.keys(rooms).map(roomId => ({
     roomId,
     participantCount: rooms[roomId].participants.length
