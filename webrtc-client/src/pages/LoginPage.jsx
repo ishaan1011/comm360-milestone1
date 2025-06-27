@@ -439,7 +439,6 @@ export default function LoginPage() {
             {/* Google Sign In */}
             <GoogleLogin
               onSuccess={async ({ credential }) => {
-                console.log('✅ got ID token:', credential);
                 const result = await googleLogin(credential);
                 if (result.success) {
                   navigate('/');
