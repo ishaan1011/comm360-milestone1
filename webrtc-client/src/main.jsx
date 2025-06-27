@@ -3,15 +3,18 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { SocketProvider } from './context/SocketContext.jsx';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <AuthProvider>
-    <SocketProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </SocketProvider>
-  </AuthProvider>
+  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <AuthProvider>
+      <SocketProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </SocketProvider>
+    </AuthProvider>
+  </GoogleOAuthProvider>
 );

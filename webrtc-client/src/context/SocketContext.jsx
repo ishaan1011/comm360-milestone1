@@ -18,7 +18,8 @@ export function SocketProvider({ children }) {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const s = io(import.meta.env.VITE_API_URL, {
+      const backendRoot = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+      const s = io(backendRoot, {
         auth: { token },
         transports: ['websocket'],
         reconnection: true,

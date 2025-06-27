@@ -48,6 +48,7 @@ app.use(cors({
     'https://webrtc-client-me7n-h7wak90mk-simrats-projects-564757ad.vercel.app',
     'https://webrtc-client-me7n.vercel.app',
     'https://webrtc-client-me7n-jett88wdy-simrats-projects-564757ad.vercel.app',
+    'https://comm360-milestone1.vercel.app',
     // Add more Vercel preview URLs here as needed
     // You can also use a function or regex for more flexibility
     (origin, callback) => {
@@ -594,7 +595,7 @@ io.on('connection', async socket => {
 });
 
 // API endpoint to get active rooms
-app.get('/rooms', (req, res) => {
+app.get('/api/rooms', (req, res) => {
   const activeRooms = Object.keys(rooms).map(roomId => ({
     roomId,
     participantCount: rooms[roomId].participants.length
