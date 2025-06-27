@@ -1,7 +1,10 @@
 import React, { useState, useContext, useEffect } from 'react';
+/* global google */
+
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
+
 import { 
   Mail, 
   Lock, 
@@ -29,8 +32,34 @@ export default function LoginPage() {
   const [activeField, setActiveField] = useState(null);
   const [showFeatures, setShowFeatures] = useState(false);
   
-  const { login, error, clearError } = useContext(AuthContext);
+  const { login, googleLogin, error, clearError } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  // 1) Initialize Google Identity SDK once
+  useEffect(() => {
+    if (window.google && !google.accounts.id.isInitialized) {
+      google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+      });
+    }
+  }, []);
+
+  // 2) Callback invoked by Google SDK
+  const handleGoogleResponse = async (response) => {
+    const { credential: idToken } = response;
+    try {
+      const result = await googleLogin(idToken);
+      if (result.success) {
+        navigate('/');       // go to dashboard on success
+      } else {
+        alert(result.error); // show any error
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   // Animate features on mount
   useEffect(() => {
@@ -435,6 +464,7 @@ export default function LoginPage() {
 
             {/* Google Sign In */}
             <motion.button
+              onClick={() => window.google && google.accounts.id.prompt()}
               className="w-full bg-white border-2 border-gray-200 text-gray-700 py-4 px-6 rounded-xl font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-3 group"
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
