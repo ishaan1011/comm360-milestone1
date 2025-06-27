@@ -15,6 +15,8 @@ import fs      from 'fs';
 import http    from 'http';
 import { Server as SocketIO } from 'socket.io';
 import User    from './src/models/user.js';
+import Message from './src/models/message.js';
+import Conversation from './src/models/conversation.js';
 
 import { generateReply } from './llm.js';
 import { transcribeAudio } from './stt.js';
@@ -22,6 +24,8 @@ import { generateAudio } from './tts.js';
 
 import authRoutes from './src/routes/auth.js';
 import authMiddleware from './src/middleware/auth.js';
+import conversationRoutes from './src/routes/conversation.js';
+import messageRoutes from './src/routes/message.js';
 
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -592,6 +596,82 @@ io.on('connection', async socket => {
     socket.to(roomId).emit('avatarNavigate', { index });
   });
 
+  // --- Real-time chat events ---
+
+  // Join a conversation room
+  socket.on('joinConversation', async (conversationId) => {
+    socket.join(conversationId);
+  });
+
+  // Leave a conversation room
+  socket.on('leaveConversation', async (conversationId) => {
+    socket.leave(conversationId);
+  });
+
+  // Send a new message
+  socket.on('chat:send', async ({ conversationId, text, file, replyTo }) => {
+    const userId = socket.userId;
+    const message = new Message({
+      conversation: conversationId,
+      sender: userId,
+      text,
+      file,
+      replyTo,
+    });
+    await message.save();
+    await Conversation.findByIdAndUpdate(conversationId, { lastMessage: message._id });
+    const populated = await message.populate('sender', 'username fullName avatarUrl');
+    io.to(conversationId).emit('chat:new', populated);
+  });
+
+  // Edit a message
+  socket.on('chat:edit', async ({ messageId, text }) => {
+    const userId = socket.userId;
+    const message = await Message.findById(messageId);
+    if (!message || message.sender.toString() !== userId) return;
+    message.text = text;
+    message.edited = true;
+    await message.save();
+    io.to(message.conversation.toString()).emit('chat:edit', { messageId, text });
+  });
+
+  // Delete a message
+  socket.on('chat:delete', async ({ messageId }) => {
+    const userId = socket.userId;
+    const message = await Message.findById(messageId);
+    if (!message || message.sender.toString() !== userId) return;
+    const conversationId = message.conversation.toString();
+    await message.deleteOne();
+    io.to(conversationId).emit('chat:delete', { messageId });
+  });
+
+  // React to a message
+  socket.on('chat:react', async ({ messageId, emoji }) => {
+    const userId = socket.userId;
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { $addToSet: { reactions: { user: userId, emoji } } },
+      { new: true }
+    );
+    io.to(message.conversation.toString()).emit('chat:react', { messageId, emoji, userId });
+  });
+
+  // Remove a reaction
+  socket.on('chat:unreact', async ({ messageId, emoji }) => {
+    const userId = socket.userId;
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { $pull: { reactions: { user: userId, emoji } } },
+      { new: true }
+    );
+    io.to(message.conversation.toString()).emit('chat:unreact', { messageId, emoji, userId });
+  });
+
+  // Typing indicator
+  socket.on('chat:typing', ({ conversationId, typing }) => {
+    socket.to(conversationId).emit('chat:typing', { userId: socket.userId, typing });
+  });
+
 });
 
 // API endpoint to get active rooms
@@ -602,6 +682,13 @@ app.get('/api/rooms', (req, res) => {
   }));
   res.json({ rooms: activeRooms });
 });
+
+// Register new conversation and message routes
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/messages', messageRoutes);
+
+// Serve uploaded message files statically from /uploads/messages at /uploads/messages/*.
+app.use('/uploads/messages', express.static(path.join(process.cwd(), 'uploads', 'messages')));
 
 // Listen on the port Render (or local) specifies
 const PORT = process.env.PORT || 8181;
