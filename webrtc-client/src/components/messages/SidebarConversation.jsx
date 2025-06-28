@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star } from 'lucide-react';
+import { Star, Trash2, MessageCircle, Users, Hash } from 'lucide-react';
 import { useChatSocket } from '../../context/ChatSocketContext';
 
 function getConversationDisplayName(conversation, currentUserId) {
@@ -91,47 +91,120 @@ export default function SidebarConversation({
 
   const otherUser = getOtherUser();
   const isOnline = otherUser && onlineUsers.has(otherUser._id);
+
+  // Get conversation type config
+  const getTypeConfig = (type) => {
+    const configs = {
+      dm: {
+        icon: MessageCircle,
+        gradient: 'from-purple-500 to-pink-500',
+        bgGradient: 'from-purple-50 to-pink-50',
+        borderColor: 'border-purple-200'
+      },
+      group: {
+        icon: Users,
+        gradient: 'from-blue-500 to-cyan-500',
+        bgGradient: 'from-blue-50 to-cyan-50',
+        borderColor: 'border-blue-200'
+      },
+      community: {
+        icon: Hash,
+        gradient: 'from-green-500 to-emerald-500',
+        bgGradient: 'from-green-50 to-emerald-50',
+        borderColor: 'border-green-200'
+      }
+    };
+    return configs[type] || configs.dm;
+  };
+
+  const typeConfig = getTypeConfig(conv.type);
   
   return (
     <div
-      className={`flex items-center px-4 py-2 cursor-pointer hover:bg-primary-100 rounded transition-colors ${isActive ? 'bg-primary-100 text-primary-700' : 'text-secondary-700'}`}
+      className={`group relative mx-3 mb-2 p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+        isActive 
+          ? `bg-gradient-to-r ${typeConfig.bgGradient} border-2 ${typeConfig.borderColor} shadow-lg transform scale-[1.02]` 
+          : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-200 hover:shadow-md'
+      }`}
       onClick={onSelect}
     >
-      <div className="relative mr-3">
-        {conv?.avatar ? (
-          <img src={conv.avatar} alt={displayName} className="h-8 w-8 rounded-full object-cover" />
-        ) : (
-          <div className="h-8 w-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-700 font-bold">
-            {initials}
+      <div className="flex items-center space-x-3">
+        {/* Avatar/Icon */}
+        <div className="relative">
+          {conv?.avatar ? (
+            <img src={conv.avatar} alt={displayName} className="h-12 w-12 rounded-full object-cover shadow-md" />
+          ) : (
+            <div className={`h-12 w-12 rounded-full bg-gradient-to-r ${typeConfig.gradient} flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
+              {conv.type === 'dm' ? initials : <typeConfig.icon className="h-6 w-6" />}
+            </div>
+          )}
+          
+          {/* Online status indicator */}
+          {(conv?.status === 'online' || (conv.type === 'dm' && isOnline)) && (
+            <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-3 border-white bg-green-500 shadow-md"></span>
+          )}
+          
+          {/* Type indicator for groups/communities */}
+          {conv.type !== 'dm' && (
+            <div className={`absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-r ${typeConfig.gradient} flex items-center justify-center border-2 border-white shadow-md`}>
+              <typeConfig.icon className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <h3 className={`font-semibold truncate ${isActive ? 'text-gray-900' : 'text-gray-800'}`}>
+              {displayName}
+            </h3>
+            <div className="flex items-center space-x-1">
+              {/* Star button */}
+              <button 
+                onClick={e => { e.stopPropagation(); onStar(); }} 
+                className={`p-1.5 rounded-full transition-all duration-200 ${
+                  starred 
+                    ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' 
+                    : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'
+                }`}
+              >
+                <Star fill={starred ? 'currentColor' : 'none'} className="h-4 w-4" />
+              </button>
+              
+              {/* Delete button */}
+              {canDelete && (
+                <button 
+                  onClick={e => { e.stopPropagation(); onDelete(); }} 
+                  className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  title="Delete conversation"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
-        )}
-        {conv?.status && (
-          <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${conv.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-        )}
-        {/* Online status indicator for DMs */}
-        {conv.type === 'dm' && isOnline && (
-          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"></span>
-        )}
+          
+          {/* Subtitle */}
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-sm text-gray-500 truncate">
+              {conv.type === 'dm' ? (isOnline ? 'Online' : 'Offline') : 
+               conv.type === 'group' ? `${conv.members?.length || 0} members` :
+               `${conv.members?.length || 0} members`}
+            </p>
+            
+            {/* Unread count */}
+            {conv?.unread > 0 && (
+              <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full px-2 py-1 min-w-[20px] text-center shadow-md">
+                {conv.unread > 99 ? '99+' : conv.unread}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-      <span className="flex-1 truncate">{displayName}</span>
-      <div className="flex items-center space-x-1">
-        <button onClick={e => { e.stopPropagation(); onStar(); }} className="text-yellow-400 hover:text-yellow-500">
-          <Star fill={starred ? 'currentColor' : 'none'} className="h-4 w-4" />
-        </button>
-        {canDelete && (
-          <button 
-            onClick={e => { e.stopPropagation(); onDelete(); }} 
-            className="text-red-400 hover:text-red-500"
-            title="Delete conversation"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        )}
-      </div>
-      {conv?.unread > 0 && (
-        <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{conv.unread}</span>
+
+      {/* Active indicator */}
+      {isActive && (
+        <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${typeConfig.gradient} rounded-r-full`}></div>
       )}
     </div>
   );
