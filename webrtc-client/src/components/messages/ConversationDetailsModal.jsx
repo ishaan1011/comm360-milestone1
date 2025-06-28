@@ -309,7 +309,7 @@ export default function ConversationDetailsModal({
               <h3 className="text-sm font-medium text-gray-900">
                 Members ({conversation.members?.length || 0})
               </h3>
-              {canManageMembers && (
+              {canManageMembers && (conversation.type === 'group' || conversation.type === 'community') && (
                 <button
                   onClick={() => setShowAddMemberModal(true)}
                   className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm"

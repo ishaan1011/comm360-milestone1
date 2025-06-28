@@ -292,15 +292,17 @@ export default function ConversationSettingsModal({
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {conversation.admins?.includes(member._id) ? (
-                      <span className="text-xs text-blue-600 flex items-center">
-                        <Crown className="h-3 w-3 mr-1" />
-                        Admin
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-500">Member</span>
+                    {(conversation.type === 'group' || conversation.type === 'community') && (
+                      conversation.admins?.includes(member._id) ? (
+                        <span className="text-xs text-blue-600 flex items-center">
+                          <Crown className="h-3 w-3 mr-1" />
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Member</span>
+                      )
                     )}
-                    {isOwner && member._id !== currentUserId && (
+                    {isOwner && member._id !== currentUserId && (conversation.type === 'group' || conversation.type === 'community') && (
                       <button
                         onClick={() => handleToggleAdmin(member._id)}
                         className={`px-2 py-1 text-xs rounded ${

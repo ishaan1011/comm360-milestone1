@@ -379,9 +379,9 @@ export async function removeAdmin(req, res, next) {
       return res.status(404).json({ message: 'Conversation not found' });
     }
 
-    // Only the owner can remove admins
-    if (conversation.createdBy !== currentUserId) {
-      return res.status(403).json({ message: 'Only the owner can remove admins' });
+    // Check if user is owner or admin
+    if (conversation.createdBy !== currentUserId && !conversation.admins.includes(currentUserId)) {
+      return res.status(403).json({ message: 'Only owners and admins can remove admins' });
     }
 
     // Check if user is an admin
