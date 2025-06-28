@@ -14,10 +14,16 @@ import { useChatSocket } from '../context/ChatSocketContext';
 const emojiList = ['😀','😂','😍','👍','🎉','😢','😮','🔥','🙏','❤️','🚀','😎'];
 
 function getInitials(name) {
+  console.log('getInitials called with:', name, 'type:', typeof name);
+  
   if (!name || typeof name !== 'string') {
+    console.log('getInitials returning fallback: U');
     return 'U';
   }
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  
+  const result = name.split(' ').map(n => n[0]).join('').toUpperCase();
+  console.log('getInitials result:', result);
+  return result;
 }
 
 function getConversationDisplayName(conversation, currentUserId) {
@@ -357,18 +363,22 @@ export default function MessagesPage() {
                 <section.icon className="h-4 w-4 mr-2" />
                 {section.section}
               </div>
-              {section.items.map(conv => (
-                <SidebarConversation
-                  key={conv._id}
-                  conv={conv}
-                  isActive={selected && selected._id === conv._id}
-                  onSelect={() => handleSelect(conv)}
-                  onStar={() => handleStar(conv._id)}
-                  starred={starred.includes(conv._id)}
-                  getInitials={getInitials}
-                  currentUserId={user?.id}
-                />
-              ))}
+              {section.items.map(conv => {
+                console.log('Rendering conversation item:', conv);
+                console.log('Conversation members:', conv?.members);
+                return (
+                  <SidebarConversation
+                    key={conv._id}
+                    conv={conv}
+                    isActive={selected && selected._id === conv._id}
+                    onSelect={() => handleSelect(conv)}
+                    onStar={() => handleStar(conv._id)}
+                    starred={starred.includes(conv._id)}
+                    getInitials={getInitials}
+                    currentUserId={user?.id}
+                  />
+                );
+              })}
             </div>
           ))}
         </div>

@@ -2,22 +2,40 @@ import React from 'react';
 import { Star } from 'lucide-react';
 
 function getConversationDisplayName(conversation, currentUserId) {
+  console.log('SidebarConversation getConversationDisplayName called with:', { conversation, currentUserId });
+  
   if (!conversation) return 'Unknown';
   
   // If conversation has a name (group/community), use it
   if (conversation.name) {
-    return conversation.name;
+    console.log('Using conversation name:', conversation.name);
+    return String(conversation.name);
   }
   
   // For DMs, show the other person's name
   if (conversation.type === 'dm' && conversation.members) {
+    console.log('Looking for other member in DM, members:', conversation.members);
     const otherMember = conversation.members.find(m => m._id !== currentUserId);
+    console.log('Other member found:', otherMember);
+    
     if (otherMember) {
-      return otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
+      // Ensure we're working with a user object and extract string values
+      const fullName = otherMember.fullName;
+      const username = otherMember.username;
+      const email = otherMember.email;
+      
+      console.log('Member properties:', { fullName, username, email });
+      
+      const displayName = fullName || username || email || 'Unknown User';
+      console.log('Final display name:', displayName, 'type:', typeof displayName);
+      
+      // Ensure we return a string
+      return String(displayName);
     }
   }
   
   // Fallback
+  console.log('Using fallback name: Unknown Conversation');
   return 'Unknown Conversation';
 }
 
@@ -30,7 +48,16 @@ export default function SidebarConversation({
   getInitials,
   currentUserId,
 }) {
+  console.log('SidebarConversation render with conv:', conv);
+  console.log('Conv type:', typeof conv);
+  console.log('Conv members:', conv?.members);
+  
   const displayName = getConversationDisplayName(conv, currentUserId);
+  console.log('Final displayName:', displayName, 'type:', typeof displayName);
+  
+  // Ensure displayName is a string
+  const safeDisplayName = String(displayName || 'Unknown');
+  console.log('Safe displayName:', safeDisplayName);
   
   return (
     <div
@@ -39,17 +66,17 @@ export default function SidebarConversation({
     >
       <div className="relative mr-3">
         {conv.avatar ? (
-          <img src={conv.avatar} alt={displayName} className="h-8 w-8 rounded-full object-cover" />
+          <img src={conv.avatar} alt={safeDisplayName} className="h-8 w-8 rounded-full object-cover" />
         ) : (
           <div className="h-8 w-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-700 font-bold">
-            {getInitials(displayName)}
+            {getInitials(safeDisplayName)}
           </div>
         )}
         {conv.status && (
           <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${conv.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
         )}
       </div>
-      <span className="flex-1 truncate">{displayName}</span>
+      <span className="flex-1 truncate">{safeDisplayName}</span>
       <button onClick={e => { e.stopPropagation(); onStar(); }} className="ml-2 text-yellow-400 hover:text-yellow-500">
         <Star fill={starred ? 'currentColor' : 'none'} className="h-4 w-4" />
       </button>
