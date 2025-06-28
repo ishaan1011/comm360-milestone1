@@ -11,7 +11,7 @@ export default function LandingPage() {
 
   // Fetch active rooms
   useEffect(() => {
-    API.get('/rooms')
+    API.get('/api/rooms')
       .then(res => setRooms(res.data.rooms))
       .catch(console.error);
   }, []);
