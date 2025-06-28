@@ -7,7 +7,7 @@ export async function listMessages(req, res, next) {
     const { conversationId } = req.params;
     const messages = await Message.find({ conversation: conversationId })
       .populate('sender', 'username fullName avatarUrl')
-      .populate('replyTo')
+      .populate('replyTo', 'text file')
       .sort({ createdAt: 1 });
     res.json({ messages });
   } catch (err) {

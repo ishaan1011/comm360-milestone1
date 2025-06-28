@@ -647,7 +647,10 @@ io.on('connection', async socket => {
     });
     await message.save();
     await Conversation.findByIdAndUpdate(conversationId, { lastMessage: message._id });
-    const populated = await message.populate('sender', 'username fullName avatarUrl');
+    const populated = await message.populate([
+      { path: 'sender', select: 'username fullName avatarUrl' },
+      { path: 'replyTo', select: 'text file' }
+    ]);
     
     // Track message status
     const messageId = message._id.toString();
@@ -760,7 +763,13 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
 
 // Serve uploaded message files statically from /uploads/messages at /uploads/messages/*.
-app.use('/uploads/messages', express.static(path.join(process.cwd(), 'uploads', 'messages')));
+app.use('/uploads/messages', (req, res, next) => {
+  // Add CORS headers for file downloads
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+}, express.static(path.join(process.cwd(), 'uploads', 'messages')));
 
 // Listen on the port Render (or local) specifies
 const PORT = process.env.PORT || 8181;
