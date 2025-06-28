@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Paperclip, Smile, X } from 'lucide-react';
 
 export default function ChatInput({
@@ -9,7 +9,48 @@ export default function ChatInput({
   uploadFile,
   onRemoveFile,
   onShowEmojiPicker,
+  onTyping,
 }) {
+  const typingTimeoutRef = useRef(null);
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    
+    // Send typing indicator
+    if (onTyping) {
+      onTyping(true);
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 2 seconds of no input
+      typingTimeoutRef.current = setTimeout(() => {
+        onTyping(false);
+      }, 2000);
+    }
+  };
+
+  const handleSend = () => {
+    // Stop typing when sending
+    if (onTyping) {
+      onTyping(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    }
+    onSend();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="p-4 border-t border-secondary-200 bg-white">
       <div className="flex space-x-2 items-center">
@@ -25,14 +66,14 @@ export default function ChatInput({
         <input
           type="text"
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') onSend(); }}
+          onChange={handleInputChange}
+          onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
           placeholder="Type a message..."
           className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         />
         <button onClick={onShowEmojiPicker} className="p-2 rounded hover:bg-secondary-100"><Smile className="h-5 w-5" /></button>
         <button
-          onClick={onSend}
+          onClick={handleSend}
           className="bg-primary-500 text-white px-6 py-2 rounded-lg hover:bg-primary-600 transition-colors"
         >Send</button>
       </div>

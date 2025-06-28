@@ -650,7 +650,10 @@ io.on('connection', async socket => {
     });
     await message.save();
     await Conversation.findByIdAndUpdate(conversationId, { lastMessage: message._id });
-    const populated = await message.populate('sender', 'username fullName avatarUrl');
+    const populated = await message.populate([
+      { path: 'sender', select: 'username fullName avatarUrl' },
+      { path: 'replyTo', select: 'text file' }
+    ]);
     
     // Track message status
     const messageId = message._id.toString();
@@ -671,8 +674,9 @@ io.on('connection', async socket => {
         .map(member => member._id.toString());
       
       if (onlineRecipients.length > 0) {
-        messageStatus.get(messageId).delivered = true;
-        messageStatus.get(messageId).recipients = onlineRecipients;
+        const status = messageStatus.get(messageId);
+        status.delivered = true;
+        status.recipients = onlineRecipients;
         io.to(conversationId).emit('chat:delivered', { messageId, recipients: onlineRecipients });
       }
     }
@@ -684,7 +688,11 @@ io.on('connection', async socket => {
     const status = messageStatus.get(messageId);
     if (status && !status.read) {
       status.read = true;
-      io.emit('chat:read', { messageId, userId });
+      // Get the conversation ID for this message
+      const message = await Message.findById(messageId);
+      if (message) {
+        io.to(message.conversation.toString()).emit('chat:read', { messageId, userId });
+      }
     }
   });
 
@@ -758,7 +766,13 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
 
 // Serve uploaded message files statically from /uploads/messages at /uploads/messages/*.
-app.use('/uploads/messages', express.static(path.join(process.cwd(), 'uploads', 'messages')));
+app.use('/uploads/messages', (req, res, next) => {
+  // Add CORS headers for file downloads
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+}, express.static(path.join(process.cwd(), 'uploads', 'messages')));
 
 // Listen on the port Render (or local) specifies
 const PORT = process.env.PORT || 8181;

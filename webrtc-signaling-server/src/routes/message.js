@@ -24,9 +24,9 @@ const upload = multer({ storage });
 router.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
   
-  // Create proper file URL
+  // Create proper file URL using environment variable or default Render domain
   const baseUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://your-render-domain.onrender.com' 
+    ? (process.env.BACKEND_URL || 'https://webrtc-signaling-server.onrender.com')
     : 'http://localhost:5000';
   
   const fileUrl = `${baseUrl}/uploads/messages/${req.file.filename}`;
