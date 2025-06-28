@@ -85,26 +85,28 @@ export default function MessageBubble({
       return <CheckCheck className="h-3 w-3 text-blue-500" />;
     } else if (status.delivered) {
       return <CheckCheck className="h-3 w-3 text-gray-400" />;
-    } else {
+    } else if (status.sent) {
       return <Check className="h-3 w-3 text-gray-400" />;
+    } else {
+      return <div className="h-3 w-3 rounded-full bg-gray-300 animate-pulse"></div>;
     }
   };
 
   return (
     <>
-      <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
         <div className={`max-w-md px-4 py-3 rounded-2xl relative group shadow-sm ${
           isOwn 
             ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
             : 'bg-white text-gray-900 border border-gray-200 hover:border-gray-300'
         }`}>
           {/* Sender name and timestamp */}
-          <div className="flex items-center justify-between mb-2">
-            <div className={`text-sm font-semibold ${isOwn ? 'text-blue-100' : 'text-gray-700'}`}>
+          <div className="flex items-center justify-between mb-2 min-w-0">
+            <div className={`text-sm font-semibold truncate flex-1 ${isOwn ? 'text-blue-100' : 'text-gray-700'}`}>
               {senderName}
             </div>
-            <div className={`flex items-center space-x-2 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-              <span className="text-xs">
+            <div className={`flex items-center space-x-2 flex-shrink-0 ml-2 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+              <span className="text-xs whitespace-nowrap">
                 {new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
               {renderStatusIndicator()}
@@ -113,43 +115,45 @@ export default function MessageBubble({
 
           {/* Reply context */}
           {replyContext && (
-            <div className={`text-xs mb-2 p-2 rounded-lg ${
+            <div className={`text-xs mb-2 p-2 rounded-lg break-words ${
               isOwn ? 'bg-blue-400 bg-opacity-30' : 'bg-gray-100'
             }`}>
               <span className={`font-medium ${isOwn ? 'text-blue-100' : 'text-gray-600'}`}>
                 Replying to: 
               </span>
               <span className={`italic ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                {(replyContext.text || '').slice(0, 30)}{(replyContext.text || '').length > 30 ? '...' : ''}
+                {(replyContext.text || '').slice(0, 50)}{(replyContext.text || '').length > 50 ? '...' : ''}
               </span>
             </div>
           )}
 
           {/* Edit mode */}
           {editMsgId === messageId ? (
-            <div className="flex items-center mt-2 space-x-2">
+            <div className="flex flex-col space-y-2">
               <input 
                 value={editInput} 
                 onChange={e => setEditInput(e.target.value)} 
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" 
               />
-              <button 
-                onClick={handleEditSave} 
-                className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium"
-              >
-                Save
-              </button>
-              <button 
-                onClick={handleEditCancel} 
-                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium"
-              >
-                Cancel
-              </button>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={handleEditSave} 
+                  className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium"
+                >
+                  Save
+                </button>
+                <button 
+                  onClick={handleEditCancel} 
+                  className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <>
               {/* Message text */}
-              <div className={`text-base leading-relaxed ${isOwn ? 'text-white' : 'text-gray-800'}`}>
+              <div className={`text-base leading-relaxed break-words ${isOwn ? 'text-white' : 'text-gray-800'}`}>
                 {msg.text}
               </div>
 
@@ -161,7 +165,7 @@ export default function MessageBubble({
                       <img 
                         src={msg.file.url} 
                         alt={msg.file.name} 
-                        className="max-w-[250px] rounded-lg cursor-pointer hover:opacity-90 transition-all duration-200 shadow-sm" 
+                        className="max-w-[250px] max-h-[200px] rounded-lg cursor-pointer hover:opacity-90 transition-all duration-200 shadow-sm object-cover" 
                         onClick={() => setShowImageModal(true)}
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/image:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
@@ -191,21 +195,21 @@ export default function MessageBubble({
                     </div>
                   ) : (
                     <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <a 
                           href={msg.file.url} 
                           download={msg.file.name} 
-                          className="text-blue-600 hover:text-blue-800 font-medium" 
+                          className="text-blue-600 hover:text-blue-800 font-medium truncate block" 
                           target="_blank" 
                           rel="noopener noreferrer"
                         >
                           {msg.file.name}
                         </a>
-                        <p className="text-xs text-gray-500 mt-1">{msg.file.type || 'Unknown type'}</p>
+                        <p className="text-xs text-gray-500 mt-1 truncate">{msg.file.type || 'Unknown type'}</p>
                       </div>
                       <button
                         onClick={() => handleDownload(msg.file.url, msg.file.name)}
-                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
                         title="Download"
                       >
                         <Download className="h-4 w-4 text-gray-600" />
@@ -224,12 +228,12 @@ export default function MessageBubble({
 
               {/* Emoji reactions */}
               <div className="flex flex-wrap items-center gap-2 mt-3">
-                {(reactions || []).map((emoji, i) => (
+                {(reactions || msg.reactions || []).map((reaction, i) => (
                   <span 
                     key={i} 
                     className="text-lg cursor-pointer hover:scale-110 transition-transform"
                   >
-                    {emoji}
+                    {reaction.emoji}
                   </span>
                 ))}
                 <button 
@@ -241,7 +245,7 @@ export default function MessageBubble({
                   <Smile className="h-4 w-4" />
                 </button>
                 {showEmojiPicker === messageId && (
-                  <div className="absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 flex flex-wrap gap-2 mt-2">
+                  <div className="absolute bottom-full right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 flex flex-wrap gap-2 mb-2 min-w-[200px]">
                     {emojiList.map(emoji => (
                       <span 
                         key={emoji} 

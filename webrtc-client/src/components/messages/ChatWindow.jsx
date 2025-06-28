@@ -74,7 +74,7 @@ export default function ChatWindow({
                   handleEditCancel={handleEditCancel}
                   replyContext={replyContext && (replyContext._id === msg._id || replyContext.id === msg.id) ? replyContext : null}
                   messageStatus={messageStatus}
-                  onlineUsers={onlineUsers[msg.senderId || msg.sender]}
+                  onlineUsers={onlineUsers}
                 />
               ))}
             </div>

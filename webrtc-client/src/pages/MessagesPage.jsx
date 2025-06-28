@@ -172,14 +172,27 @@ export default function MessagesPage() {
     // React to message
     chatSocket.on('chat:react', ({ messageId, emoji, userId }) => {
       setMessages(prev => prev.map(m => m._id === messageId ? { ...m, reactions: [...(m.reactions || []), { user: userId, emoji }] } : m));
+      setReactions(prev => ({
+        ...prev,
+        [messageId]: [...(prev[messageId] || []), { user: userId, emoji }]
+      }));
     });
     // Unreact
     chatSocket.on('chat:unreact', ({ messageId, emoji, userId }) => {
       setMessages(prev => prev.map(m => m._id === messageId ? { ...m, reactions: (m.reactions || []).filter(r => !(r.user === userId && r.emoji === emoji)) } : m));
+      setReactions(prev => ({
+        ...prev,
+        [messageId]: (prev[messageId] || []).filter(r => !(r.user === userId && r.emoji === emoji))
+      }));
     });
     // Typing
     chatSocket.on('chat:typing', ({ userId: typingUserId, typing }) => {
-      if (typingUserId !== user.id) setTyping(typing);
+      if (typingUserId !== user.id) {
+        setTyping(prev => ({
+          ...prev,
+          [typingUserId]: typing
+        }));
+      }
     });
     return () => {
       chatSocket.off('chat:new');
@@ -190,7 +203,7 @@ export default function MessagesPage() {
       chatSocket.off('chat:typing');
     };
     // eslint-disable-next-line
-  }, [chatSocket.socket, selected]);
+  }, [chatSocket.socket, selected, user.id]);
 
   // Mark messages as read when conversation is selected
   useEffect(() => {
@@ -453,9 +466,9 @@ export default function MessagesPage() {
     setReplyTo(msg);
   };
 
-  const handleTyping = (typing) => {
-    if (selected && selected._id) {
-      chatSocket.sendTyping({ conversationId: selected._id, typing });
+  const handleTyping = (isTyping) => {
+    if (selected && chatSocket.socket) {
+      chatSocket.socket.emit('chat:typing', { conversationId: selected._id, typing: isTyping });
     }
   };
 
