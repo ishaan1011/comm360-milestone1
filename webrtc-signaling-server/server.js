@@ -668,8 +668,9 @@ io.on('connection', async socket => {
         .map(member => member._id.toString());
       
       if (onlineRecipients.length > 0) {
-        messageStatus.get(messageId).delivered = true;
-        messageStatus.get(messageId).recipients = onlineRecipients;
+        const status = messageStatus.get(messageId);
+        status.delivered = true;
+        status.recipients = onlineRecipients;
         io.to(conversationId).emit('chat:delivered', { messageId, recipients: onlineRecipients });
       }
     }
@@ -681,7 +682,11 @@ io.on('connection', async socket => {
     const status = messageStatus.get(messageId);
     if (status && !status.read) {
       status.read = true;
-      io.emit('chat:read', { messageId, userId });
+      // Get the conversation ID for this message
+      const message = await Message.findById(messageId);
+      if (message) {
+        io.to(message.conversation.toString()).emit('chat:read', { messageId, userId });
+      }
     }
   });
 
