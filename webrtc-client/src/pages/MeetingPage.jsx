@@ -9,6 +9,7 @@ import {
 
 export default function MeetingPage() {
   const { roomId } = useParams();
+  const hasJoinedRef = useRef(false);
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const {
@@ -37,12 +38,13 @@ export default function MeetingPage() {
   const chatRef = useRef(null);
 
   useEffect(() => {
-    if (roomId && user) {
+    if (roomId && user && !hasJoinedRef.current) {
+      hasJoinedRef.current = true;
       console.log('Calling joinMeeting for room:', roomId);
       joinMeeting(roomId);
     }
     return () => leaveMeeting();
-  }, [roomId, user, joinMeeting, leaveMeeting]);
+  }, [roomId, user]);
 
   useEffect(() => {
     if (!localStream) {
