@@ -58,7 +58,7 @@ export async function createConversation(req, res, next) {
       }
     }
 
-    // For groups, require name and members
+    // For groups, require name and members, and check for duplicates
     if (type === 'group') {
       if (!name || !name.trim()) {
         return res.status(400).json({ message: 'Group name is required' });
@@ -66,12 +66,32 @@ export async function createConversation(req, res, next) {
       if (!memberIds || memberIds.length === 0) {
         return res.status(400).json({ message: 'Group must have at least one member' });
       }
+
+      // Check for duplicate group name
+      const existingGroup = await Conversation.findOne({
+        type: 'group',
+        name: name.trim()
+      });
+
+      if (existingGroup) {
+        return res.status(400).json({ message: 'A group with this name already exists' });
+      }
     }
 
-    // For communities, require name and add all users
+    // For communities, require name and add all users, and check for duplicates
     if (type === 'community') {
       if (!name || !name.trim()) {
         return res.status(400).json({ message: 'Community name is required' });
+      }
+      
+      // Check for duplicate community name
+      const existingCommunity = await Conversation.findOne({
+        type: 'community',
+        name: name.trim()
+      });
+
+      if (existingCommunity) {
+        return res.status(400).json({ message: 'A community with this name already exists' });
       }
       
       // Get all users for community
@@ -268,7 +288,24 @@ export async function updateConversation(req, res, next) {
     }
 
     if (name !== undefined) {
-      conversation.name = name.trim();
+      const trimmedName = name.trim();
+      
+      // Check for duplicate names for groups and communities
+      if (conversation.type === 'group' || conversation.type === 'community') {
+        const existingConversation = await Conversation.findOne({
+          _id: { $ne: conversationId }, // Exclude current conversation
+          type: conversation.type,
+          name: trimmedName
+        });
+
+        if (existingConversation) {
+          return res.status(400).json({ 
+            message: `A ${conversation.type} with this name already exists` 
+          });
+        }
+      }
+      
+      conversation.name = trimmedName;
     }
 
     if (description !== undefined) {
@@ -301,9 +338,9 @@ export async function addAdmin(req, res, next) {
       return res.status(404).json({ message: 'Conversation not found' });
     }
 
-    // Only the owner can add admins
-    if (conversation.createdBy !== currentUserId) {
-      return res.status(403).json({ message: 'Only the owner can add admins' });
+    // Check if user is owner or admin
+    if (conversation.createdBy !== currentUserId && !conversation.admins.includes(currentUserId)) {
+      return res.status(403).json({ message: 'Only owners and admins can add admins' });
     }
 
     // Check if user is a member
