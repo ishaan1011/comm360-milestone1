@@ -54,20 +54,30 @@ export async function googleAuth(req, res, next) {
       console.error('❌ Google verifyIdToken error:', err);
       return res.status(400).json({ message: 'Google authentication failed', details: err.toString() });
     }
-    
+
     const payload = ticket.getPayload();
+    // 1) Try to find a user already linked to this Google ID
     let user = await User.findOne({ googleId: payload.sub });
-    user = await User.findOne({ email: payload.email });
+
+    // 2) If none, try to find an existing account by email
     if (!user) {
-      user.googleId   = payload.sub;
-      user.avatarUrl  = payload.picture;
-    } else {
+      user = await User.findOne({ email: payload.email });
+      if (user) {
+        // Link existing account to Google
+        user.googleId  = payload.sub;
+        user.avatarUrl = payload.picture;
+        await user.save();
+      }
+    }
+
+    // 3) If still no user, create a brand-new one
+    if (!user) {
       user = new User({
-        email: payload.email,
-        fullName: payload.name,
-        username: payload.email.split('@')[0],
-        googleId: payload.sub,
-        avatarUrl: payload.picture,
+        email:      payload.email,
+        fullName:   payload.name,
+        username:   payload.email.split('@')[0],
+        googleId:   payload.sub,
+        avatarUrl:  payload.picture,
       });
       await user.save();
     }
