@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smile, Edit, Trash2, Reply, Download, X, Maximize2 } from 'lucide-react';
+import { Smile, Edit, Trash2, Reply, Download, X, Maximize2, Check, CheckCheck } from 'lucide-react';
 
 export default function MessageBubble({
   msg,
@@ -18,6 +18,7 @@ export default function MessageBubble({
   handleEditSave,
   handleEditCancel,
   replyContext,
+  messageStatus,
 }) {
   const messageId = msg._id || msg.id;
   const [showImageModal, setShowImageModal] = useState(false);
@@ -37,16 +38,58 @@ export default function MessageBubble({
   }
 
   const handleDownload = (url, filename) => {
+    // Create a proper download link
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    
+    // For cross-origin files, we need to fetch and create a blob
+    if (url.startsWith('http')) {
+      fetch(url)
+        .then(response => response.blob())
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob);
+          link.href = blobUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+        })
+        .catch(error => {
+          console.error('Error downloading file:', error);
+          // Fallback to direct link
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+    } else {
+      // For same-origin files
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const isImage = msg.file && msg.file.type && msg.file.type.startsWith('image/');
   
+  // Get message status
+  const status = messageStatus?.get(messageId) || { sent: true, delivered: false, read: false };
+  
+  // Render status indicator
+  const renderStatusIndicator = () => {
+    if (!isOwn) return null;
+    
+    if (status.read) {
+      return <CheckCheck className="h-3 w-3 text-blue-500" />;
+    } else if (status.delivered) {
+      return <CheckCheck className="h-3 w-3 text-gray-400" />;
+    } else {
+      return <Check className="h-3 w-3 text-gray-400" />;
+    }
+  };
+
   return (
     <>
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
@@ -60,8 +103,11 @@ export default function MessageBubble({
             <div className={`text-sm font-semibold ${isOwn ? 'text-blue-100' : 'text-gray-700'}`}>
               {senderName}
             </div>
-            <div className={`text-xs ml-3 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-              {new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div className={`flex items-center space-x-2 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+              <span className="text-xs">
+                {new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              {renderStatusIndicator()}
             </div>
           </div>
 

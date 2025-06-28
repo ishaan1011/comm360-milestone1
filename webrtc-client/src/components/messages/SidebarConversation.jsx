@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star } from 'lucide-react';
+import { useChatSocket } from '../../context/ChatSocketContext';
 
 function getConversationDisplayName(conversation, currentUserId) {
   console.log('SidebarConversation getConversationDisplayName called with:', { conversation, currentUserId });
@@ -75,8 +76,21 @@ export default function SidebarConversation({
   currentUserId,
   canDelete,
 }) {
+  const { onlineUsers } = useChatSocket();
+  
   const displayName = getConversationDisplayName(conv, currentUserId);
   const initials = getInitials(displayName);
+  
+  // Get the other user in DM
+  const getOtherUser = () => {
+    if (conv.type === 'dm' && conv.members) {
+      return conv.members.find(member => member._id !== currentUserId);
+    }
+    return null;
+  };
+
+  const otherUser = getOtherUser();
+  const isOnline = otherUser && onlineUsers.has(otherUser._id);
   
   return (
     <div
@@ -93,6 +107,10 @@ export default function SidebarConversation({
         )}
         {conv?.status && (
           <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${conv.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+        )}
+        {/* Online status indicator for DMs */}
+        {conv.type === 'dm' && isOnline && (
+          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"></span>
         )}
       </div>
       <span className="flex-1 truncate">{displayName}</span>

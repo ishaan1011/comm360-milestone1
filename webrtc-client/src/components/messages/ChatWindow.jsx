@@ -20,6 +20,8 @@ export default function ChatWindow({
   replyContext,
   typing,
   currentUserId,
+  messageStatus,
+  onlineUsers,
 }) {
   const chatRef = useRef(null);
 
@@ -71,6 +73,8 @@ export default function ChatWindow({
                   handleEditSave={handleEditSave}
                   handleEditCancel={handleEditCancel}
                   replyContext={replyContext && (replyContext._id === msg._id || replyContext.id === msg.id) ? replyContext : null}
+                  messageStatus={messageStatus}
+                  onlineUsers={onlineUsers[msg.senderId || msg.sender]}
                 />
               ))}
             </div>

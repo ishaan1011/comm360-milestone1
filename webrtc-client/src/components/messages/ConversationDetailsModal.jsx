@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Crown, Users, Hash, Edit, Save, X as CloseIcon, Plus, UserPlus, UserMinus, Shield, MoreVertical } from 'lucide-react';
 import API from '../../api/client';
+import { useChatSocket } from '../../context/ChatSocketContext';
 
 function getInitials(name) {
   if (!name || typeof name !== 'string') {
@@ -16,6 +17,7 @@ export default function ConversationDetailsModal({
   currentUserId,
   onConversationUpdated
 }) {
+  const { onlineUsers } = useChatSocket();
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [name, setName] = useState('');
@@ -350,6 +352,13 @@ export default function ConversationDetailsModal({
                             <span className="text-xs text-blue-600 flex items-center">
                               <Crown className="h-3 w-3 mr-1" />
                               Admin
+                            </span>
+                          )}
+                          {/* Online status indicator */}
+                          {onlineUsers.has(member._id) && (
+                            <span className="text-xs text-green-600 flex items-center">
+                              <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                              Online
                             </span>
                           )}
                         </div>

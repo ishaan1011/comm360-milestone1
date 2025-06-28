@@ -7,9 +7,11 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Get all users (for conversation creation)
-router.get('/', ctrl.getAllUsers);
+router.get('/', ctrl.getUsers);
 
 // Get user by ID
 router.get('/:id', ctrl.getUserById);
+
+router.get('/online', ctrl.getOnlineUsers);
 
 export default router; 

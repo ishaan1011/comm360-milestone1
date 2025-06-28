@@ -23,8 +23,20 @@ const upload = multer({ storage });
 // File upload endpoint
 router.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-  const fileUrl = `/uploads/messages/${req.file.filename}`;
-  res.json({ url: fileUrl, name: req.file.originalname, type: req.file.mimetype });
+  
+  // Create proper file URL
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://your-render-domain.onrender.com' 
+    : 'http://localhost:5000';
+  
+  const fileUrl = `${baseUrl}/uploads/messages/${req.file.filename}`;
+  
+  res.json({ 
+    url: fileUrl, 
+    name: req.file.originalname, 
+    type: req.file.mimetype,
+    size: req.file.size
+  });
 });
 
 // List messages in a conversation

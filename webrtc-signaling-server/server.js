@@ -422,13 +422,28 @@ io.use((socket, next) => {
 // Organize offers by room
 const rooms = {};
 const connectedSockets = [];
+const onlineUsers = new Map(); // Track online users
+const messageStatus = new Map(); // Track message status
 
 // Socket.io logic
 io.on('connection', async socket => {
   // fetch authenticated user
-  const user = await User.findById(socket.userId).select('username');
+  const user = await User.findById(socket.userId).select('username fullName avatarUrl');
   if (!user) return socket.disconnect(true);
   const userName = user.username;
+  
+  // Add user to online users
+  onlineUsers.set(socket.userId, {
+    id: socket.userId,
+    username: userName,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
+    socketId: socket.id,
+    lastSeen: new Date()
+  });
+  
+  // Broadcast online status to all users
+  io.emit('user:online', { userId: socket.userId, user: onlineUsers.get(socket.userId) });
   
   // roomId can still come from client
   const roomId = socket.handshake.auth.roomId || 'default';
@@ -557,6 +572,10 @@ io.on('connection', async socket => {
   
   // Handle disconnections
   socket.on('disconnect', () => {
+    // Remove user from online users
+    onlineUsers.delete(socket.userId);
+    io.emit('user:offline', { userId: socket.userId });
+    
     // Clean up the same way as hangup
     if (rooms[roomId]) {
       const participantIndex = rooms[roomId].participants.indexOf(userName);
@@ -629,7 +648,46 @@ io.on('connection', async socket => {
     await message.save();
     await Conversation.findByIdAndUpdate(conversationId, { lastMessage: message._id });
     const populated = await message.populate('sender', 'username fullName avatarUrl');
+    
+    // Track message status
+    const messageId = message._id.toString();
+    messageStatus.set(messageId, {
+      sent: true,
+      delivered: false,
+      read: false,
+      recipients: []
+    });
+    
     io.to(conversationId).emit('chat:new', populated);
+    
+    // Mark as delivered for online users in the conversation
+    const conversation = await Conversation.findById(conversationId).populate('members');
+    if (conversation) {
+      const onlineRecipients = conversation.members
+        .filter(member => member._id.toString() !== userId && onlineUsers.has(member._id.toString()))
+        .map(member => member._id.toString());
+      
+      if (onlineRecipients.length > 0) {
+        messageStatus.get(messageId).delivered = true;
+        messageStatus.get(messageId).recipients = onlineRecipients;
+        io.to(conversationId).emit('chat:delivered', { messageId, recipients: onlineRecipients });
+      }
+    }
+  });
+
+  // Mark message as read
+  socket.on('chat:read', async ({ messageId }) => {
+    const userId = socket.userId;
+    const status = messageStatus.get(messageId);
+    if (status && !status.read) {
+      status.read = true;
+      io.emit('chat:read', { messageId, userId });
+    }
+  });
+
+  // Get online users
+  socket.on('getOnlineUsers', () => {
+    socket.emit('onlineUsers', Array.from(onlineUsers.values()));
   });
 
   // Edit a message

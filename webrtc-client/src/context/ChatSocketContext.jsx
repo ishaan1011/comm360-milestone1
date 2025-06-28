@@ -8,6 +8,8 @@ export function ChatSocketProvider({ children }) {
   const { user } = useAuth();
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState(new Map());
+  const [messageStatus, setMessageStatus] = useState(new Map());
   const listeners = useRef({});
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export function ChatSocketProvider({ children }) {
     s.on('connect', () => {
       setConnected(true);
       console.log('Chat socket connected');
+      // Get online users when connected
+      s.emit('getOnlineUsers');
     });
 
     s.on('disconnect', () => {
@@ -38,6 +42,47 @@ export function ChatSocketProvider({ children }) {
 
     s.on('connect_error', (err) => {
       console.error('Chat socket connection error:', err);
+    });
+
+    // Online status events
+    s.on('user:online', ({ userId, user }) => {
+      setOnlineUsers(prev => new Map(prev).set(userId, user));
+    });
+
+    s.on('user:offline', ({ userId }) => {
+      setOnlineUsers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(userId);
+        return newMap;
+      });
+    });
+
+    s.on('onlineUsers', (users) => {
+      const userMap = new Map();
+      users.forEach(user => userMap.set(user.id, user));
+      setOnlineUsers(userMap);
+    });
+
+    // Message status events
+    s.on('chat:delivered', ({ messageId, recipients }) => {
+      setMessageStatus(prev => {
+        const newMap = new Map(prev);
+        const status = newMap.get(messageId) || { sent: true, delivered: false, read: false, recipients: [] };
+        status.delivered = true;
+        status.recipients = [...new Set([...status.recipients, ...recipients])];
+        newMap.set(messageId, status);
+        return newMap;
+      });
+    });
+
+    s.on('chat:read', ({ messageId, userId }) => {
+      setMessageStatus(prev => {
+        const newMap = new Map(prev);
+        const status = newMap.get(messageId) || { sent: true, delivered: false, read: false, recipients: [] };
+        status.read = true;
+        newMap.set(messageId, status);
+        return newMap;
+      });
     });
 
     setSocket(s);
@@ -109,10 +154,18 @@ export function ChatSocketProvider({ children }) {
     }
   };
 
+  const markAsRead = (messageId) => {
+    if (socket) {
+      socket.emit('chat:read', { messageId });
+    }
+  };
+
   return (
     <ChatSocketContext.Provider value={{
       socket,
       connected,
+      onlineUsers,
+      messageStatus,
       on,
       off,
       joinConversation,
@@ -123,6 +176,7 @@ export function ChatSocketProvider({ children }) {
       reactMessage,
       unreactMessage,
       sendTyping,
+      markAsRead,
     }}>
       {children}
     </ChatSocketContext.Provider>

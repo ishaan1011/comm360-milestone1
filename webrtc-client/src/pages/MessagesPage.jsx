@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useChatSocket } from '../context/ChatSocketContext';
 
 // Placeholder for emoji list
-const emojiList = ['😀','😂','😍','👍','🎉','😢','😮','🔥','🙏','❤️','🚀','😎'];
+const emojiList = ['👍', '❤️', '😂', '😮', '😢', '😡', '👏', '🙏', '🔥', '💯', '✨', '🎉', '🤔', '😎', '🥳', '😴'];
 
 function getInitials(name) {
   console.log('getInitials called with:', name, 'type:', typeof name);
@@ -191,6 +191,18 @@ export default function MessagesPage() {
     };
     // eslint-disable-next-line
   }, [chatSocket.socket, selected]);
+
+  // Mark messages as read when conversation is selected
+  useEffect(() => {
+    if (selected && messages.length > 0) {
+      // Mark all messages as read
+      messages.forEach(msg => {
+        if (msg.sender !== user.id) {
+          chatSocket.markAsRead(msg._id);
+        }
+      });
+    }
+  }, [selected, messages, user.id, chatSocket]);
 
   // Filter conversations by search
   const filteredConversations = allConversations.map(section => {
@@ -584,7 +596,9 @@ export default function MessagesPage() {
           onEmoji={handleEmojiClick}
           replyContext={replyTo}
           typing={typing}
-          currentUserId={user?.id}
+          currentUserId={user.id}
+          messageStatus={chatSocket.messageStatus}
+          onlineUsers={chatSocket.onlineUsers}
         />
         {/* Chat input */}
         <ChatInput
