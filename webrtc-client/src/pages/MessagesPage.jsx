@@ -170,9 +170,11 @@ export default function MessagesPage() {
   }, [chatSocket.socket, selected]);
 
   // Filter conversations by search
-  const filteredConversations = allConversations.map(section => ({
-    ...section,
-    items: section.items.filter(conv => {
+  const filteredConversations = allConversations.map(section => {
+    console.log('Processing section:', section.section);
+    console.log('Section items before filter:', section.items);
+    
+    const filteredItems = section.items.filter(conv => {
       console.log('Filtering conversation:', conv);
       console.log('Conversation members:', conv.members);
       
@@ -181,17 +183,36 @@ export default function MessagesPage() {
       
       const memberNames = conv.members?.map(m => {
         console.log('Processing member:', m);
-        const name = m.fullName || m.username || m.email || '';
-        console.log('Member name:', name);
-        return name;
+        console.log('Member type:', typeof m);
+        console.log('Member keys:', Object.keys(m));
+        
+        // Ensure we're not accidentally rendering the member object
+        if (typeof m === 'object' && m !== null) {
+          const name = m.fullName || m.username || m.email || '';
+          console.log('Extracted member name:', name);
+          return String(name);
+        }
+        
+        console.log('Member is not an object, returning empty string');
+        return '';
       }).join(' ') || '';
       
       console.log('Member names string:', memberNames);
       
-      return displayName.toLowerCase().includes(search.toLowerCase()) || 
+      const result = displayName.toLowerCase().includes(search.toLowerCase()) || 
              memberNames.toLowerCase().includes(search.toLowerCase());
-    }),
-  }));
+      
+      console.log('Filter result:', result);
+      return result;
+    });
+    
+    console.log('Filtered items:', filteredItems);
+    
+    return {
+      ...section,
+      items: filteredItems,
+    };
+  });
 
   const handleSelect = (conv) => {
     console.log('Selecting conversation:', conv);
@@ -357,30 +378,37 @@ export default function MessagesPage() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.map(section => (
-            <div key={section.section} className="mb-4">
-              <div className="flex items-center px-4 py-2 text-secondary-500 uppercase text-xs font-semibold">
-                <section.icon className="h-4 w-4 mr-2" />
-                {section.section}
+          {filteredConversations.map(section => {
+            console.log('Rendering section:', section.section);
+            console.log('Section items count:', section.items.length);
+            
+            return (
+              <div key={section.section} className="mb-4">
+                <div className="flex items-center px-4 py-2 text-secondary-500 uppercase text-xs font-semibold">
+                  <section.icon className="h-4 w-4 mr-2" />
+                  {section.section}
+                </div>
+                {section.items.map(conv => {
+                  console.log('Rendering conversation item:', conv);
+                  console.log('Conversation members:', conv?.members);
+                  console.log('About to render SidebarConversation for conv:', conv._id);
+                  
+                  return (
+                    <SidebarConversation
+                      key={conv._id}
+                      conv={conv}
+                      isActive={selected && selected._id === conv._id}
+                      onSelect={() => handleSelect(conv)}
+                      onStar={() => handleStar(conv._id)}
+                      starred={starred.includes(conv._id)}
+                      getInitials={getInitials}
+                      currentUserId={user?.id}
+                    />
+                  );
+                })}
               </div>
-              {section.items.map(conv => {
-                console.log('Rendering conversation item:', conv);
-                console.log('Conversation members:', conv?.members);
-                return (
-                  <SidebarConversation
-                    key={conv._id}
-                    conv={conv}
-                    isActive={selected && selected._id === conv._id}
-                    onSelect={() => handleSelect(conv)}
-                    onStar={() => handleStar(conv._id)}
-                    starred={starred.includes(conv._id)}
-                    getInitials={getInitials}
-                    currentUserId={user?.id}
-                  />
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       {/* Chat Window */}
