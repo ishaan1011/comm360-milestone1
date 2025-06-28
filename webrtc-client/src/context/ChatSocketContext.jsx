@@ -12,16 +12,39 @@ export function ChatSocketProvider({ children }) {
 
   useEffect(() => {
     if (!user) return;
+    
     const token = localStorage.getItem('token');
-    const s = io(import.meta.env.VITE_API_URL, {
+    if (!token) return;
+
+    // Use the same URL format as SocketContext
+    const backendRoot = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+    const s = io(backendRoot, {
       auth: { token },
       transports: ['websocket'],
       reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
+
+    s.on('connect', () => {
+      setConnected(true);
+      console.log('Chat socket connected');
+    });
+
+    s.on('disconnect', () => {
+      setConnected(false);
+      console.log('Chat socket disconnected');
+    });
+
+    s.on('connect_error', (err) => {
+      console.error('Chat socket connection error:', err);
+    });
+
     setSocket(s);
-    s.on('connect', () => setConnected(true));
-    s.on('disconnect', () => setConnected(false));
-    return () => s.disconnect();
+
+    return () => {
+      s.disconnect();
+    };
   }, [user]);
 
   // Register event listeners
@@ -30,6 +53,7 @@ export function ChatSocketProvider({ children }) {
     socket.on(event, cb);
     listeners.current[event] = cb;
   };
+  
   const off = (event) => {
     if (!socket) return;
     socket.off(event, listeners.current[event]);
@@ -37,14 +61,53 @@ export function ChatSocketProvider({ children }) {
   };
 
   // Chat actions
-  const joinConversation = (conversationId) => socket?.emit('joinConversation', conversationId);
-  const leaveConversation = (conversationId) => socket?.emit('leaveConversation', conversationId);
-  const sendMessage = (data) => socket?.emit('chat:send', data);
-  const editMessage = (data) => socket?.emit('chat:edit', data);
-  const deleteMessage = (data) => socket?.emit('chat:delete', data);
-  const reactMessage = (data) => socket?.emit('chat:react', data);
-  const unreactMessage = (data) => socket?.emit('chat:unreact', data);
-  const sendTyping = (data) => socket?.emit('chat:typing', data);
+  const joinConversation = (conversationId) => {
+    if (socket) {
+      socket.emit('joinConversation', conversationId);
+    }
+  };
+  
+  const leaveConversation = (conversationId) => {
+    if (socket) {
+      socket.emit('leaveConversation', conversationId);
+    }
+  };
+  
+  const sendMessage = (data) => {
+    if (socket) {
+      socket.emit('chat:send', data);
+    }
+  };
+  
+  const editMessage = (data) => {
+    if (socket) {
+      socket.emit('chat:edit', data);
+    }
+  };
+  
+  const deleteMessage = (data) => {
+    if (socket) {
+      socket.emit('chat:delete', data);
+    }
+  };
+  
+  const reactMessage = (data) => {
+    if (socket) {
+      socket.emit('chat:react', data);
+    }
+  };
+  
+  const unreactMessage = (data) => {
+    if (socket) {
+      socket.emit('chat:unreact', data);
+    }
+  };
+  
+  const sendTyping = (data) => {
+    if (socket) {
+      socket.emit('chat:typing', data);
+    }
+  };
 
   return (
     <ChatSocketContext.Provider value={{
@@ -67,5 +130,9 @@ export function ChatSocketProvider({ children }) {
 }
 
 export function useChatSocket() {
-  return useContext(ChatSocketContext);
+  const context = useContext(ChatSocketContext);
+  if (!context) {
+    throw new Error('useChatSocket must be used within a ChatSocketProvider');
+  }
+  return context;
 } 
