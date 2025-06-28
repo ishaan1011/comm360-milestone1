@@ -8,12 +8,12 @@ class BotService {
       
       if (text) {
         // Text-based reply
-        response = await API.post('/bot/reply', { text });
+        response = await API.post('/api/bot/reply', { text });
       } else if (audioBlob) {
         // Audio-based reply
         const formData = new FormData();
         formData.append('audio', audioBlob);
-        response = await API.post('/bot/reply', formData, {
+        response = await API.post('/api/bot/reply', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -34,7 +34,7 @@ class BotService {
   // Text-to-speech conversion
   async textToSpeech(text) {
     try {
-      const response = await API.post('/bot/tts', { text }, {
+      const response = await API.post('/api/bot/tts', { text }, {
         responseType: 'blob',
       });
       
@@ -57,7 +57,7 @@ class BotService {
       const formData = new FormData();
       formData.append('audio', audioBlob);
       
-      const response = await API.post('/bot/reply', formData, {
+      const response = await API.post('/api/bot/reply', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -68,6 +68,77 @@ class BotService {
       return { 
         success: false, 
         error: error.response?.data?.error || 'Failed to convert speech to text' 
+      };
+    }
+  }
+
+  // Send text message to bot
+  async sendTextMessage(text) {
+    try {
+      let response;
+      if (text) {
+        response = await API.post('/api/bot/reply', { text });
+      } else {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'audio.webm');
+        response = await API.post('/api/bot/reply', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to send message to bot' 
+      };
+    }
+  }
+
+  // Send audio message to bot
+  async sendAudioMessage(audioBlob) {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'audio.webm');
+      const response = await API.post('/api/bot/reply', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to send audio to bot' 
+      };
+    }
+  }
+
+  // Get TTS audio
+  async getTTSAudio(text) {
+    try {
+      const response = await API.post('/api/bot/tts', { text }, {
+        responseType: 'blob'
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to get TTS audio' 
+      };
+    }
+  }
+
+  // Send audio message to bot (alternative method)
+  async sendAudioMessageAlt(audioBlob) {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'audio.webm');
+      const response = await API.post('/api/bot/reply', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: 'Failed to send audio to bot' 
       };
     }
   }
