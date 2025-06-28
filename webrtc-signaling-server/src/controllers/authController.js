@@ -50,7 +50,11 @@ export async function googleAuth(req, res, next) {
     });
     const payload = ticket.getPayload();
     let user = await User.findOne({ googleId: payload.sub });
+    user = await User.findOne({ email: payload.email });
     if (!user) {
+      user.googleId   = payload.sub;
+      user.avatarUrl  = payload.picture;
+    } else {
       user = new User({
         email: payload.email,
         fullName: payload.name,

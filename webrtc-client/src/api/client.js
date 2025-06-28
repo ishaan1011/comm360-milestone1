@@ -3,6 +3,7 @@ import axios from 'axios';
 // will be replaced by Vite from your .env
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
 });
 
 // automatically attach token

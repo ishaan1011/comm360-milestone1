@@ -47,13 +47,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Enable CORS for your front-end origin ──────────────────────────────────
-app.use(cors({
+const corsOptions = {
   origin: [
-    'https://webrtc-client-sigma.vercel.app',
-    'https://webrtc-client-me7n-h7wak90mk-simrats-projects-564757ad.vercel.app',
     'https://webrtc-client-me7n.vercel.app',
-    'https://webrtc-client-me7n-jett88wdy-simrats-projects-564757ad.vercel.app',
     'https://comm360-milestone1.vercel.app',
+    'https://comm360-milestone1.onrender.com',
+
     // Add more Vercel preview URLs here as needed
     // You can also use a function or regex for more flexibility
     (origin, callback) => {
@@ -76,7 +75,11 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 // public: register / login / google / me (must be before authMiddleware)
