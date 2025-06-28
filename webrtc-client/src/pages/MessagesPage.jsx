@@ -27,37 +27,57 @@ function getInitials(name) {
 }
 
 function getConversationDisplayName(conversation, currentUserId) {
-  console.log('getConversationDisplayName called with:', { conversation, currentUserId });
+  console.log('MessagesPage getConversationDisplayName called with:', { conversation, currentUserId });
   
-  if (!conversation) {
-    console.log('No conversation provided, returning Unknown');
-    return 'Unknown';
-  }
-  
-  // If conversation has a name (group/community), use it
-  if (conversation.name) {
-    console.log('Using conversation name:', conversation.name);
-    return conversation.name;
-  }
-  
-  // For DMs, show the other person's name
-  if (conversation.type === 'dm' && conversation.members) {
-    console.log('Looking for other member in DM');
-    const otherMember = conversation.members.find(m => m._id !== currentUserId);
-    console.log('Other member found:', otherMember);
-    console.log('Other member type:', typeof otherMember);
-    
-    if (otherMember) {
-      const displayName = otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
-      console.log('Using member display name:', displayName);
-      console.log('Display name type:', typeof displayName);
-      return displayName;
+  try {
+    if (!conversation) {
+      console.log('No conversation provided, returning Unknown');
+      return 'Unknown';
     }
+    
+    // If conversation has a name (group/community), use it
+    if (conversation.name) {
+      console.log('Using conversation name:', conversation.name);
+      return String(conversation.name);
+    }
+    
+    // For DMs, show the other person's name
+    if (conversation.type === 'dm' && conversation.members) {
+      console.log('Looking for other member in DM');
+      const otherMember = conversation.members.find(m => m._id !== currentUserId);
+      console.log('Other member found:', otherMember);
+      console.log('Other member type:', typeof otherMember);
+      
+      if (otherMember && typeof otherMember === 'object') {
+        console.log('Processing other member object');
+        
+        // Ensure we're working with a user object and extract string values
+        const fullName = otherMember.fullName;
+        const username = otherMember.username;
+        const email = otherMember.email;
+        
+        console.log('Member properties:', { fullName, username, email });
+        
+        const displayName = fullName || username || email || 'Unknown User';
+        console.log('Final display name:', displayName, 'type:', typeof displayName);
+        
+        // Ensure we return a string
+        const result = String(displayName);
+        console.log('Returning result:', result);
+        return result;
+      } else {
+        console.log('No valid other member found, using fallback');
+        return 'Unknown User';
+      }
+    }
+    
+    // Fallback
+    console.log('Using fallback name: Unknown Conversation');
+    return 'Unknown Conversation';
+  } catch (error) {
+    console.error('Error in MessagesPage getConversationDisplayName:', error);
+    return 'Error';
   }
-  
-  // Fallback
-  console.log('Using fallback name: Unknown Conversation');
-  return 'Unknown Conversation';
 }
 
 function groupMessagesByDate(messages) {
@@ -178,32 +198,37 @@ export default function MessagesPage() {
       console.log('Filtering conversation:', conv);
       console.log('Conversation members:', conv.members);
       
-      const displayName = getConversationDisplayName(conv, user?.id);
-      console.log('Display name:', displayName);
-      
-      const memberNames = conv.members?.map(m => {
-        console.log('Processing member:', m);
-        console.log('Member type:', typeof m);
-        console.log('Member keys:', Object.keys(m));
+      try {
+        const displayName = getConversationDisplayName(conv, user?.id);
+        console.log('Display name:', displayName);
         
-        // Ensure we're not accidentally rendering the member object
-        if (typeof m === 'object' && m !== null) {
-          const name = m.fullName || m.username || m.email || '';
-          console.log('Extracted member name:', name);
-          return String(name);
-        }
+        const memberNames = conv.members?.map(m => {
+          console.log('Processing member:', m);
+          console.log('Member type:', typeof m);
+          console.log('Member keys:', Object.keys(m));
+          
+          // Ensure we're not accidentally rendering the member object
+          if (typeof m === 'object' && m !== null) {
+            const name = m.fullName || m.username || m.email || '';
+            console.log('Extracted member name:', name);
+            return String(name);
+          }
+          
+          console.log('Member is not an object, returning empty string');
+          return '';
+        }).join(' ') || '';
         
-        console.log('Member is not an object, returning empty string');
-        return '';
-      }).join(' ') || '';
-      
-      console.log('Member names string:', memberNames);
-      
-      const result = displayName.toLowerCase().includes(search.toLowerCase()) || 
-             memberNames.toLowerCase().includes(search.toLowerCase());
-      
-      console.log('Filter result:', result);
-      return result;
+        console.log('Member names string:', memberNames);
+        
+        const result = displayName.toLowerCase().includes(search.toLowerCase()) || 
+               memberNames.toLowerCase().includes(search.toLowerCase());
+        
+        console.log('Filter result:', result);
+        return result;
+      } catch (error) {
+        console.error('Error in conversation filter:', error);
+        return false;
+      }
     });
     
     console.log('Filtered items:', filteredItems);
@@ -378,37 +403,40 @@ export default function MessagesPage() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.map(section => {
-            console.log('Rendering section:', section.section);
-            console.log('Section items count:', section.items.length);
-            
-            return (
-              <div key={section.section} className="mb-4">
-                <div className="flex items-center px-4 py-2 text-secondary-500 uppercase text-xs font-semibold">
-                  <section.icon className="h-4 w-4 mr-2" />
-                  {section.section}
+          {(() => {
+            console.log('About to render filteredConversations:', filteredConversations);
+            return filteredConversations.map(section => {
+              console.log('Rendering section:', section.section);
+              console.log('Section items count:', section.items.length);
+              
+              return (
+                <div key={section.section} className="mb-4">
+                  <div className="flex items-center px-4 py-2 text-secondary-500 uppercase text-xs font-semibold">
+                    <section.icon className="h-4 w-4 mr-2" />
+                    {section.section}
+                  </div>
+                  {section.items.map(conv => {
+                    console.log('Rendering conversation item:', conv);
+                    console.log('Conversation members:', conv?.members);
+                    console.log('About to render SidebarConversation for conv:', conv._id);
+                    
+                    return (
+                      <SidebarConversation
+                        key={conv._id}
+                        conv={conv}
+                        isActive={selected && selected._id === conv._id}
+                        onSelect={() => handleSelect(conv)}
+                        onStar={() => handleStar(conv._id)}
+                        starred={starred.includes(conv._id)}
+                        getInitials={getInitials}
+                        currentUserId={user?.id}
+                      />
+                    );
+                  })}
                 </div>
-                {section.items.map(conv => {
-                  console.log('Rendering conversation item:', conv);
-                  console.log('Conversation members:', conv?.members);
-                  console.log('About to render SidebarConversation for conv:', conv._id);
-                  
-                  return (
-                    <SidebarConversation
-                      key={conv._id}
-                      conv={conv}
-                      isActive={selected && selected._id === conv._id}
-                      onSelect={() => handleSelect(conv)}
-                      onStar={() => handleStar(conv._id)}
-                      starred={starred.includes(conv._id)}
-                      getInitials={getInitials}
-                      currentUserId={user?.id}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
       {/* Chat Window */}
