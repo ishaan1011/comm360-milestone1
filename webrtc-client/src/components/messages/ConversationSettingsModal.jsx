@@ -73,7 +73,7 @@ export default function ConversationSettingsModal({
 
   const handleAddMember = async (userId) => {
     try {
-      await API.post(`/api/conversations/${conversation._id}/add-member`, { userId });
+      await API.post(`/api/conversations/${conversation._id}/members`, { userId });
       setSuccess('Member added successfully');
       onConversationUpdated();
       setTimeout(() => setSuccess(null), 3000);
@@ -85,7 +85,7 @@ export default function ConversationSettingsModal({
 
   const handleRemoveMember = async (userId) => {
     try {
-      await API.post(`/api/conversations/${conversation._id}/remove-member`, { userId });
+      await API.delete(`/api/conversations/${conversation._id}/members/${userId}`);
       setSuccess('Member removed successfully');
       onConversationUpdated();
       setTimeout(() => setSuccess(null), 3000);
@@ -99,10 +99,10 @@ export default function ConversationSettingsModal({
     try {
       const isCurrentlyAdmin = conversation.admins?.includes(userId);
       if (isCurrentlyAdmin) {
-        await API.post(`/api/conversations/${conversation._id}/remove-admin`, { userId });
+        await API.delete(`/api/conversations/${conversation._id}/admins/${userId}`);
         setSuccess('Admin removed successfully');
       } else {
-        await API.post(`/api/conversations/${conversation._id}/add-admin`, { userId });
+        await API.post(`/api/conversations/${conversation._id}/admins`, { userId });
         setSuccess('Admin added successfully');
       }
       onConversationUpdated();
