@@ -47,8 +47,19 @@ export default function MessageBubble({
     
     // For cross-origin files, we need to fetch and create a blob
     if (url.startsWith('http')) {
-      fetch(url)
-        .then(response => response.blob())
+      fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.blob();
+        })
         .then(blob => {
           const blobUrl = URL.createObjectURL(blob);
           link.href = blobUrl;
@@ -59,10 +70,8 @@ export default function MessageBubble({
         })
         .catch(error => {
           console.error('Error downloading file:', error);
-          // Fallback to direct link
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          // Fallback: try to open in new tab
+          window.open(url, '_blank');
         });
     } else {
       // For same-origin files
@@ -122,7 +131,7 @@ export default function MessageBubble({
                 Replying to: 
               </span>
               <span className={`italic ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                {(replyContext.text || '').slice(0, 50)}{(replyContext.text || '').length > 50 ? '...' : ''}
+                {(replyContext.text || replyContext.file?.name || '').slice(0, 50)}{(replyContext.text || replyContext.file?.name || '').length > 50 ? '...' : ''}
               </span>
             </div>
           )}

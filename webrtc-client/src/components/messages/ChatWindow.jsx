@@ -72,7 +72,7 @@ export default function ChatWindow({
                   setEditInput={setEditInput}
                   handleEditSave={handleEditSave}
                   handleEditCancel={handleEditCancel}
-                  replyContext={replyContext && (replyContext._id === msg._id || replyContext.id === msg.id) ? replyContext : null}
+                  replyContext={msg.replyTo || (replyContext && (replyContext._id === msg._id || replyContext.id === msg.id) ? replyContext : null)}
                   messageStatus={messageStatus}
                   onlineUsers={onlineUsers}
                 />
