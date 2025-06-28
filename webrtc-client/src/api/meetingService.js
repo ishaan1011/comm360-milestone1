@@ -4,7 +4,7 @@ class MeetingService {
   // Get ICE servers configuration
   async getIceServers() {
     try {
-      const response = await API.get('/ice');
+      const response = await API.get('/api/ice');
       return { success: true, data: response.data };
     } catch (error) {
       return { 
@@ -17,7 +17,7 @@ class MeetingService {
   // Get active rooms
   async getActiveRooms() {
     try {
-      const response = await API.get('/rooms');
+      const response = await API.get('/api/rooms');
       return { success: true, data: response.data };
     } catch (error) {
       return { 

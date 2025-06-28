@@ -15,6 +15,8 @@ import fs      from 'fs';
 import http    from 'http';
 import { Server as SocketIO } from 'socket.io';
 import User    from './src/models/user.js';
+import Message from './src/models/message.js';
+import Conversation from './src/models/conversation.js';
 
 import { generateReply } from './llm.js';
 import { transcribeAudio } from './stt.js';
@@ -22,6 +24,9 @@ import { generateAudio } from './tts.js';
 
 import authRoutes from './src/routes/auth.js';
 import authMiddleware from './src/middleware/auth.js';
+import conversationRoutes from './src/routes/conversation.js';
+import messageRoutes from './src/routes/message.js';
+import userRoutes from './src/routes/user.js';
 
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -74,14 +79,21 @@ app.use(cors({
 }));
 // ─────────────────────────────────────────────────────────────────────────────
 
-// public: register / login / google / me
+// public: register / login / google / me (must be before authMiddleware)
 app.use('/api/auth', authRoutes);
-
-// ─── Protect all other /api routes with JWT auth ───────────────────────────
-app.use('/api', authMiddleware);
 
 app.use(helmet());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+
+// ─── Protect all other /api routes with JWT auth ───────────────────────────
+// Apply authMiddleware to all /api routes EXCEPT /api/auth
+app.use('/api', (req, res, next) => {
+  // Skip auth middleware for auth routes
+  if (req.path.startsWith('/auth')) {
+    return next();
+  }
+  return authMiddleware(req, res, next);
+});
 
 // ─── Recording upload endpoint ────────────────────────────────────────────
 // Temporarily store uploads, then move into a per-session folder
@@ -410,13 +422,28 @@ io.use((socket, next) => {
 // Organize offers by room
 const rooms = {};
 const connectedSockets = [];
+const onlineUsers = new Map(); // Track online users
+const messageStatus = new Map(); // Track message status
 
 // Socket.io logic
 io.on('connection', async socket => {
   // fetch authenticated user
-  const user = await User.findById(socket.userId).select('username');
+  const user = await User.findById(socket.userId).select('username fullName avatarUrl');
   if (!user) return socket.disconnect(true);
   const userName = user.username;
+  
+  // Add user to online users
+  onlineUsers.set(socket.userId, {
+    id: socket.userId,
+    username: userName,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl,
+    socketId: socket.id,
+    lastSeen: new Date()
+  });
+  
+  // Broadcast online status to all users
+  io.emit('user:online', { userId: socket.userId, user: onlineUsers.get(socket.userId) });
   
   // roomId can still come from client
   const roomId = socket.handshake.auth.roomId || 'default';
@@ -545,6 +572,10 @@ io.on('connection', async socket => {
   
   // Handle disconnections
   socket.on('disconnect', () => {
+    // Remove user from online users
+    onlineUsers.delete(socket.userId);
+    io.emit('user:offline', { userId: socket.userId });
+    
     // Clean up the same way as hangup
     if (rooms[roomId]) {
       const participantIndex = rooms[roomId].participants.indexOf(userName);
@@ -592,6 +623,121 @@ io.on('connection', async socket => {
     socket.to(roomId).emit('avatarNavigate', { index });
   });
 
+  // --- Real-time chat events ---
+
+  // Join a conversation room
+  socket.on('joinConversation', async (conversationId) => {
+    socket.join(conversationId);
+  });
+
+  // Leave a conversation room
+  socket.on('leaveConversation', async (conversationId) => {
+    socket.leave(conversationId);
+  });
+
+  // Send a new message
+  socket.on('chat:send', async ({ conversationId, text, file, replyTo }) => {
+    const userId = socket.userId;
+    const message = new Message({
+      conversation: conversationId,
+      sender: userId,
+      text,
+      file,
+      replyTo,
+    });
+    await message.save();
+    await Conversation.findByIdAndUpdate(conversationId, { lastMessage: message._id });
+    const populated = await message.populate('sender', 'username fullName avatarUrl');
+    
+    // Track message status
+    const messageId = message._id.toString();
+    messageStatus.set(messageId, {
+      sent: true,
+      delivered: false,
+      read: false,
+      recipients: []
+    });
+    
+    io.to(conversationId).emit('chat:new', populated);
+    
+    // Mark as delivered for online users in the conversation
+    const conversation = await Conversation.findById(conversationId).populate('members');
+    if (conversation) {
+      const onlineRecipients = conversation.members
+        .filter(member => member._id.toString() !== userId && onlineUsers.has(member._id.toString()))
+        .map(member => member._id.toString());
+      
+      if (onlineRecipients.length > 0) {
+        messageStatus.get(messageId).delivered = true;
+        messageStatus.get(messageId).recipients = onlineRecipients;
+        io.to(conversationId).emit('chat:delivered', { messageId, recipients: onlineRecipients });
+      }
+    }
+  });
+
+  // Mark message as read
+  socket.on('chat:read', async ({ messageId }) => {
+    const userId = socket.userId;
+    const status = messageStatus.get(messageId);
+    if (status && !status.read) {
+      status.read = true;
+      io.emit('chat:read', { messageId, userId });
+    }
+  });
+
+  // Get online users
+  socket.on('getOnlineUsers', () => {
+    socket.emit('onlineUsers', Array.from(onlineUsers.values()));
+  });
+
+  // Edit a message
+  socket.on('chat:edit', async ({ messageId, text }) => {
+    const userId = socket.userId;
+    const message = await Message.findById(messageId);
+    if (!message || message.sender.toString() !== userId) return;
+    message.text = text;
+    message.edited = true;
+    await message.save();
+    io.to(message.conversation.toString()).emit('chat:edit', { messageId, text });
+  });
+
+  // Delete a message
+  socket.on('chat:delete', async ({ messageId }) => {
+    const userId = socket.userId;
+    const message = await Message.findById(messageId);
+    if (!message || message.sender.toString() !== userId) return;
+    const conversationId = message.conversation.toString();
+    await message.deleteOne();
+    io.to(conversationId).emit('chat:delete', { messageId });
+  });
+
+  // React to a message
+  socket.on('chat:react', async ({ messageId, emoji }) => {
+    const userId = socket.userId;
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { $addToSet: { reactions: { user: userId, emoji } } },
+      { new: true }
+    );
+    io.to(message.conversation.toString()).emit('chat:react', { messageId, emoji, userId });
+  });
+
+  // Remove a reaction
+  socket.on('chat:unreact', async ({ messageId, emoji }) => {
+    const userId = socket.userId;
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { $pull: { reactions: { user: userId, emoji } } },
+      { new: true }
+    );
+    io.to(message.conversation.toString()).emit('chat:unreact', { messageId, emoji, userId });
+  });
+
+  // Typing indicator
+  socket.on('chat:typing', ({ conversationId, typing }) => {
+    socket.to(conversationId).emit('chat:typing', { userId: socket.userId, typing });
+  });
+
 });
 
 // API endpoint to get active rooms
@@ -602,6 +748,14 @@ app.get('/api/rooms', (req, res) => {
   }));
   res.json({ rooms: activeRooms });
 });
+
+// Register new conversation and message routes
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/users', userRoutes);
+
+// Serve uploaded message files statically from /uploads/messages at /uploads/messages/*.
+app.use('/uploads/messages', express.static(path.join(process.cwd(), 'uploads', 'messages')));
 
 // Listen on the port Render (or local) specifies
 const PORT = process.env.PORT || 8181;

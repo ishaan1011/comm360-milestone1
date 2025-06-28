@@ -5,15 +5,18 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { SocketProvider } from './context/SocketContext.jsx';
+import { ChatSocketProvider } from './context/ChatSocketContext.jsx';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
     <AuthProvider>
       <SocketProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <ChatSocketProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </ChatSocketProvider>
       </SocketProvider>
     </AuthProvider>
   </GoogleOAuthProvider>
