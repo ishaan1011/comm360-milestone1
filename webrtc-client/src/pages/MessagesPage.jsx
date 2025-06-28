@@ -14,7 +14,41 @@ import { useChatSocket } from '../context/ChatSocketContext';
 const emojiList = ['😀','😂','😍','👍','🎉','😢','😮','🔥','🙏','❤️','🚀','😎'];
 
 function getInitials(name) {
+  if (!name || typeof name !== 'string') {
+    return 'U';
+  }
   return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
+function getConversationDisplayName(conversation, currentUserId) {
+  console.log('getConversationDisplayName called with:', { conversation, currentUserId });
+  
+  if (!conversation) {
+    console.log('No conversation provided, returning Unknown');
+    return 'Unknown';
+  }
+  
+  // If conversation has a name (group/community), use it
+  if (conversation.name) {
+    console.log('Using conversation name:', conversation.name);
+    return conversation.name;
+  }
+  
+  // For DMs, show the other person's name
+  if (conversation.type === 'dm' && conversation.members) {
+    console.log('Looking for other member in DM');
+    const otherMember = conversation.members.find(m => m._id !== currentUserId);
+    console.log('Other member found:', otherMember);
+    if (otherMember) {
+      const displayName = otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
+      console.log('Using member display name:', displayName);
+      return displayName;
+    }
+  }
+  
+  // Fallback
+  console.log('Using fallback name: Unknown Conversation');
+  return 'Unknown Conversation';
 }
 
 function groupMessagesByDate(messages) {
@@ -129,11 +163,21 @@ export default function MessagesPage() {
   // Filter conversations by search
   const filteredConversations = allConversations.map(section => ({
     ...section,
-    items: section.items.filter(conv => conv.name?.toLowerCase().includes(search.toLowerCase()) || conv.members?.some(m => m.fullName?.toLowerCase().includes(search.toLowerCase()))),
+    items: section.items.filter(conv => {
+      const displayName = getConversationDisplayName(conv, user?.id);
+      const memberNames = conv.members?.map(m => m.fullName || m.username || m.email || '').join(' ') || '';
+      return displayName.toLowerCase().includes(search.toLowerCase()) || 
+             memberNames.toLowerCase().includes(search.toLowerCase());
+    }),
   }));
 
   const handleSelect = (conv) => {
     console.log('Selecting conversation:', conv);
+    console.log('Conversation members:', conv?.members);
+    console.log('Current user ID:', user?.id);
+    console.log('Display name:', getConversationDisplayName(conv, user?.id));
+    console.log('Initials:', getInitials(getConversationDisplayName(conv, user?.id)));
+    
     if (!conv || !conv._id) {
       console.error('Invalid conversation object:', conv);
       return;
@@ -306,6 +350,7 @@ export default function MessagesPage() {
                   onStar={() => handleStar(conv._id)}
                   starred={starred.includes(conv._id)}
                   getInitials={getInitials}
+                  currentUserId={user?.id}
                 />
               ))}
             </div>
@@ -318,20 +363,20 @@ export default function MessagesPage() {
         <div className="border-b border-secondary-200 px-6 py-4 font-semibold text-lg bg-white flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {selected && selected.avatar ? (
-              <img src={selected.avatar} alt={selected.name} className="h-8 w-8 rounded-full object-cover" />
+              <img src={selected.avatar} alt={selected.name || 'Conversation'} className="h-8 w-8 rounded-full object-cover" />
             ) : (
               <div className="h-8 w-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-700 font-bold">
-                {selected ? getInitials(selected.name || selected.members?.find(m => m._id !== user.id)?.fullName || '') : ''}
+                {selected ? getInitials(getConversationDisplayName(selected, user?.id)) : ''}
               </div>
             )}
-            <span>{selected ? selected.name || selected.members?.filter(m => m._id !== user.id).map(m => m.fullName).join(', ') : ''}</span>
+            <span>{selected ? getConversationDisplayName(selected, user?.id) : ''}</span>
             {selected && selected.status && (
               <span className={`h-3 w-3 rounded-full ${selected.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
             )}
           </div>
           <div className="flex items-center space-x-2">
             <button onClick={() => setSettingsOpen(true)} className="p-2 hover:bg-secondary-100 rounded" title="Settings">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 8c.13.21.22.45.22.7 0 .25-.09.49-.22.7z"></path></svg>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 8c.13.21.22.45.22.7 0 .25-.09.49-.22.7z"></path></svg>
             </button>
           </div>
         </div>

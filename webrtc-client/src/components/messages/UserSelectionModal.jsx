@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Search, User, X } from 'lucide-react';
 import API from '../../api/client';
 
+function getInitials(name) {
+  if (!name || typeof name !== 'string') {
+    return 'U';
+  }
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
 export default function UserSelectionModal({ isOpen, onClose, onSelectUser, currentUserId }) {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -130,7 +137,7 @@ export default function UserSelectionModal({ isOpen, onClose, onSelectUser, curr
                       />
                     ) : (
                       <span className="text-blue-600 font-semibold">
-                        {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
+                        {getInitials(user.fullName || user.username)}
                       </span>
                     )}
                   </div>
