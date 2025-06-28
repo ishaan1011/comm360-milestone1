@@ -20,7 +20,20 @@ export default function MessageBubble({
   replyContext,
 }) {
   const messageId = msg._id || msg.id;
-  const senderName = msg.senderName || msg.sender || 'Unknown';
+  
+  // Handle populated sender object or sender ID
+  let senderName = 'Unknown';
+  if (msg.sender) {
+    if (typeof msg.sender === 'object' && msg.sender.fullName) {
+      senderName = msg.sender.fullName;
+    } else if (typeof msg.sender === 'object' && msg.sender.username) {
+      senderName = msg.sender.username;
+    } else if (typeof msg.sender === 'string') {
+      senderName = msg.sender; // Fallback to ID if no populated data
+    }
+  } else if (msg.senderName) {
+    senderName = msg.senderName;
+  }
   
   return (
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>

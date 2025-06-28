@@ -39,7 +39,11 @@ export default function ChatWindow({
               <MessageBubble
                 key={msg._id || msg.id}
                 msg={msg}
-                isOwn={msg.senderId === currentUserId || msg.sender === currentUserId}
+                isOwn={
+                  (msg.senderId === currentUserId) || 
+                  (msg.sender === currentUserId) || 
+                  (msg.sender && typeof msg.sender === 'object' && msg.sender._id === currentUserId)
+                }
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onReply={onReply}

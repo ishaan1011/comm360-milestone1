@@ -29,6 +29,10 @@ export async function sendMessage(req, res, next) {
       replyTo,
     });
     await message.save();
+    
+    // Populate sender information before sending response
+    await message.populate('sender', 'username fullName avatarUrl');
+    
     // Update lastMessage in conversation
     await Conversation.findByIdAndUpdate(conversationId, { lastMessage: message._id });
     res.status(201).json({ message });
@@ -49,6 +53,10 @@ export async function editMessage(req, res, next) {
     message.text = text;
     message.edited = true;
     await message.save();
+    
+    // Populate sender information before sending response
+    await message.populate('sender', 'username fullName avatarUrl');
+    
     res.json({ message });
   } catch (err) {
     next(err);
