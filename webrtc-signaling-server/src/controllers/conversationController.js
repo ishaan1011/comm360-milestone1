@@ -208,4 +208,123 @@ export async function deleteConversation(req, res, next) {
   } catch (err) {
     next(err);
   }
+}
+
+// Update a conversation
+export async function updateConversation(req, res, next) {
+  try {
+    const { conversationId } = req.params;
+    const { name } = req.body;
+    const userId = req.user.id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    // Check if user is admin
+    if (!conversation.admins.includes(userId)) {
+      return res.status(403).json({ message: 'Only admins can update conversation' });
+    }
+
+    if (name !== undefined) {
+      conversation.name = name.trim();
+    }
+
+    await conversation.save();
+    
+    // Populate members for response
+    await conversation.populate('members', 'username fullName avatarUrl');
+
+    res.json({ 
+      message: 'Conversation updated successfully',
+      conversation 
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Add an admin to a conversation
+export async function addAdmin(req, res, next) {
+  try {
+    const { conversationId } = req.params;
+    const { userId: newAdminId } = req.body;
+    const currentUserId = req.user.id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    // Only the owner can add admins
+    if (conversation.createdBy !== currentUserId) {
+      return res.status(403).json({ message: 'Only the owner can add admins' });
+    }
+
+    // Check if user is a member
+    if (!conversation.members.includes(newAdminId)) {
+      return res.status(400).json({ message: 'User must be a member to become admin' });
+    }
+
+    // Check if user is already an admin
+    if (conversation.admins.includes(newAdminId)) {
+      return res.status(400).json({ message: 'User is already an admin' });
+    }
+
+    conversation.admins.push(newAdminId);
+    await conversation.save();
+
+    // Populate members for response
+    await conversation.populate('members', 'username fullName avatarUrl');
+
+    res.json({ 
+      message: 'Admin added successfully',
+      conversation 
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Remove an admin from a conversation
+export async function removeAdmin(req, res, next) {
+  try {
+    const { conversationId } = req.params;
+    const { userId: adminId } = req.body;
+    const currentUserId = req.user.id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    // Only the owner can remove admins
+    if (conversation.createdBy !== currentUserId) {
+      return res.status(403).json({ message: 'Only the owner can remove admins' });
+    }
+
+    // Cannot remove the owner
+    if (adminId === conversation.createdBy) {
+      return res.status(400).json({ message: 'Cannot remove the owner as admin' });
+    }
+
+    // Check if user is an admin
+    if (!conversation.admins.includes(adminId)) {
+      return res.status(400).json({ message: 'User is not an admin' });
+    }
+
+    conversation.admins = conversation.admins.filter(id => id.toString() !== adminId);
+    await conversation.save();
+
+    // Populate members for response
+    await conversation.populate('members', 'username fullName avatarUrl');
+
+    res.json({ 
+      message: 'Admin removed successfully',
+      conversation 
+    });
+  } catch (err) {
+    next(err);
+  }
 } 

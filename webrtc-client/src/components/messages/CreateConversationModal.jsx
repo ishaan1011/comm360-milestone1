@@ -59,7 +59,7 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
   const handleUserToggle = (user) => {
     if (conversationType === 'dm') {
       handleCreateConversation([user._id]);
-    } else {
+    } else if (conversationType === 'group') {
       setSelectedUsers(prev => {
         const isSelected = prev.find(u => u._id === user._id);
         if (isSelected) {
@@ -90,7 +90,7 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
     try {
       const conversationData = {
         type: conversationType,
-        memberIds: memberIds
+        memberIds: conversationType === 'community' ? [] : memberIds
       };
 
       if (conversationType === 'group') {
@@ -100,6 +100,15 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
       }
 
       const response = await API.post('/api/conversations', conversationData);
+      
+      // Check if this is an existing DM being returned
+      if (response.data.message && response.data.message.includes('already exists')) {
+        // Existing DM found, just select it
+        onConversationCreated(response.data.conversation);
+        handleClose();
+        return;
+      }
+      
       onConversationCreated(response.data.conversation);
       handleClose();
     } catch (error) {
