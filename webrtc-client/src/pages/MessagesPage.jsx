@@ -205,7 +205,18 @@ export default function MessagesPage() {
         const memberNames = conv.members?.map(m => {
           console.log('Processing member:', m);
           console.log('Member type:', typeof m);
-          console.log('Member keys:', Object.keys(m));
+          
+          // Safe way to get object keys
+          try {
+            if (m && typeof m === 'object') {
+              const keys = Object.keys(m);
+              console.log('Member keys:', keys);
+            } else {
+              console.log('Member is not an object, no keys to log');
+            }
+          } catch (error) {
+            console.error('Error getting member keys:', error);
+          }
           
           // Ensure we're not accidentally rendering the member object
           if (typeof m === 'object' && m !== null) {
