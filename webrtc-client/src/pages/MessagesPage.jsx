@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Users, Hash, Plus, Search, MoreVertical, Settings, Star, Trash2, Send, Paperclip, Smile } from 'lucide-react';
 import SidebarConversation from '../components/messages/SidebarConversation';
 import ChatWindow from '../components/messages/ChatWindow';
@@ -11,7 +11,7 @@ import ConversationDetailsModal from '../components/messages/ConversationDetails
 import * as conversationAPI from '../api/conversationService';
 import * as messageAPI from '../api/messageService';
 import { useAuth } from '../context/AuthContext';
-import { ChatSocketContext } from '../context/ChatSocketContext';
+import { useChatSocket } from '../context/ChatSocketContext';
 
 // Placeholder for emoji list
 const emojiList = ['😀','😂','😍','👍','🎉','😢','😮','🔥','🙏','❤️','🚀','😎'];
@@ -94,7 +94,7 @@ function groupMessagesByDate(messages) {
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const { chatSocket } = useContext(ChatSocketContext);
+  const chatSocket = useChatSocket();
   const [allConversations, setAllConversations] = useState([]);
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
