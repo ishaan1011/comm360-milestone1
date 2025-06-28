@@ -50,14 +50,24 @@ export default function MessagesPage() {
   // Fetch conversations on mount (REST)
   useEffect(() => {
     conversationAPI.getConversations().then(res => {
+      console.log('Conversations API response:', res);
+      const conversations = res.data.conversations || res.data || [];
+      console.log('Processed conversations:', conversations);
+      
       setAllConversations([
-        { section: 'Direct Messages', icon: User, items: res.data.conversations.filter(c => c.type === 'dm') },
-        { section: 'Groups', icon: Users, items: res.data.conversations.filter(c => c.type === 'group') },
-        { section: 'Communities', icon: Hash, items: res.data.conversations.filter(c => c.type === 'community') },
+        { section: 'Direct Messages', icon: User, items: conversations.filter(c => c.type === 'dm') },
+        { section: 'Groups', icon: Users, items: conversations.filter(c => c.type === 'group') },
+        { section: 'Communities', icon: Hash, items: conversations.filter(c => c.type === 'community') },
       ]);
+      
       // Auto-select first conversation
-      const first = res.data.conversations[0];
-      if (first) handleSelect(first);
+      const first = conversations[0];
+      if (first) {
+        console.log('Auto-selecting first conversation:', first);
+        handleSelect(first);
+      }
+    }).catch(error => {
+      console.error('Error fetching conversations:', error);
     });
     // eslint-disable-next-line
   }, []);
@@ -119,6 +129,11 @@ export default function MessagesPage() {
   }));
 
   const handleSelect = (conv) => {
+    console.log('Selecting conversation:', conv);
+    if (!conv || !conv._id) {
+      console.error('Invalid conversation object:', conv);
+      return;
+    }
     setSelected(conv);
     setReplyTo(null);
     setShowEmojiPicker(false);
@@ -126,21 +141,39 @@ export default function MessagesPage() {
   };
 
   const handleSend = async () => {
-    let fileMeta = null;
-    if (uploadFile) {
-      const res = await messageAPI.uploadFile(uploadFile);
-      fileMeta = res.data;
+    // Check if a conversation is selected and has an _id
+    if (!selected || !selected._id) {
+      console.error('No conversation selected or conversation has no _id');
+      return;
     }
-    chatSocket.sendMessage({
-      conversationId: selected._id,
-      text: input,
-      file: fileMeta,
-      replyTo: replyTo ? replyTo._id : undefined,
-    });
-    setInput('');
-    setUploadFile(null);
-    setReplyTo(null);
-    setTyping(false);
+
+    // Check if there's input to send
+    if (!input.trim() && !uploadFile) {
+      return;
+    }
+
+    try {
+      let fileMeta = null;
+      if (uploadFile) {
+        const res = await messageAPI.uploadMessageFile(uploadFile);
+        fileMeta = res.data;
+      }
+      
+      chatSocket.sendMessage({
+        conversationId: selected._id,
+        text: input.trim(),
+        file: fileMeta,
+        replyTo: replyTo ? replyTo._id : undefined,
+      });
+      
+      setInput('');
+      setUploadFile(null);
+      setReplyTo(null);
+      setTyping(false);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // You could add a notification here to show the error to the user
+    }
   };
 
   const handleEdit = (msg) => {
