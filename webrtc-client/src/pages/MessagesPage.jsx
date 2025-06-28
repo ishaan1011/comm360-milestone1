@@ -3,9 +3,9 @@ import { User, Users, Hash, Plus, Search, MoreVertical, Settings, Star, Trash2, 
 import SidebarConversation from '../components/messages/SidebarConversation';
 import ChatWindow from '../components/messages/ChatWindow';
 import ChatInput from '../components/messages/ChatInput';
-import SettingsPanel from '../components/messages/SettingsPanel';
 import CreateConversationModal from '../components/messages/CreateConversationModal';
 import UserSelectionModal from '../components/messages/UserSelectionModal';
+import ConversationSettingsModal from '../components/messages/ConversationSettingsModal';
 import ConversationDetailsModal from '../components/messages/ConversationDetailsModal';
 import * as conversationAPI from '../api/conversationService';
 import * as messageAPI from '../api/messageService';
@@ -101,6 +101,7 @@ export default function MessagesPage() {
   const [search, setSearch] = useState('');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [starred, setStarred] = useState([]);
   const [typing, setTyping] = useState({});
@@ -110,8 +111,6 @@ export default function MessagesPage() {
   const [uploadFile, setUploadFile] = useState(null);
   const [reactions, setReactions] = useState({});
   const [replyTo, setReplyTo] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState({ dark: false });
   const [notification, setNotification] = useState(null);
 
   // Fetch conversations on mount (REST)
@@ -451,7 +450,7 @@ export default function MessagesPage() {
   const grouped = groupMessagesByDate(messages);
 
   return (
-    <div className={`flex h-[80vh] bg-white rounded-lg shadow-lg overflow-hidden${settings.dark ? ' dark' : ''}`}>
+    <div className={`flex h-[80vh] bg-white rounded-lg shadow-lg overflow-hidden`}>
       {/* Sidebar */}
       <div className="w-80 bg-secondary-50 border-r border-secondary-200 flex flex-col">
         <div className="p-4 border-b border-secondary-200 font-bold text-lg flex items-center justify-between">
@@ -547,9 +546,15 @@ export default function MessagesPage() {
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <button onClick={() => setSettingsOpen(true)} className="p-2 hover:bg-secondary-100 rounded" title="Settings">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09c0 .66.39 1.26 1 1.51a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 8c.13.21.22.45.22.7 0 .25-.09.49-.22.7z"></path></svg>
-            </button>
+            {selected && (
+              <button 
+                onClick={() => setShowSettingsModal(true)} 
+                className="p-2 hover:bg-secondary-100 rounded" 
+                title="Conversation Settings"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </div>
         {/* Reply context */}
@@ -598,7 +603,6 @@ export default function MessagesPage() {
             <button onClick={() => setNotification(null)} className="ml-4 text-white">×</button>
           </div>
         )}
-        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} setSettings={setSettings} />
       </div>
       
       {/* User Selection Modal */}
@@ -615,6 +619,16 @@ export default function MessagesPage() {
         onClose={() => setShowCreateModal(false)}
         onConversationCreated={handleConversationCreated}
         currentUserId={user?.id}
+      />
+
+      {/* Conversation Settings Modal */}
+      <ConversationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        conversation={selected}
+        currentUserId={user?.id}
+        onConversationUpdated={handleConversationUpdated}
+        onConversationDeleted={() => handleConversationDeleted(selected?._id)}
       />
 
       {/* Conversation Details Modal */}
