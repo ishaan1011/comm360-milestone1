@@ -123,7 +123,7 @@ export default function MessageBubble({
           </div>
 
           {/* Reply context */}
-          {replyContext && (
+          {(replyContext || msg.replyTo) && (replyContext?.text || replyContext?.file || msg.replyTo?.text || msg.replyTo?.file) && (
             <div className={`text-xs mb-2 p-2 rounded-lg break-words ${
               isOwn ? 'bg-blue-400 bg-opacity-30' : 'bg-gray-100'
             }`}>
@@ -131,7 +131,7 @@ export default function MessageBubble({
                 Replying to: 
               </span>
               <span className={`italic ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                {(replyContext.text || replyContext.file?.name || '').slice(0, 50)}{(replyContext.text || replyContext.file?.name || '').length > 50 ? '...' : ''}
+                {((replyContext || msg.replyTo)?.text || (replyContext || msg.replyTo)?.file?.name || '').slice(0, 50)}{((replyContext || msg.replyTo)?.text || (replyContext || msg.replyTo)?.file?.name || '').length > 50 ? '...' : ''}
               </span>
             </div>
           )}
