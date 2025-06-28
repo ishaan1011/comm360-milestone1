@@ -44,10 +44,17 @@ export async function login(req, res, next) {
 export async function googleAuth(req, res, next) {
   try {
     const { idToken } = req.body;
-    const ticket = await googleClient.verifyIdToken({
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID
-    });
+      });
+    } catch (err) {
+      console.error('❌ Google verifyIdToken error:', err);
+      return res.status(400).json({ message: 'Google authentication failed', details: err.toString() });
+    }
+    
     const payload = ticket.getPayload();
     let user = await User.findOne({ googleId: payload.sub });
     user = await User.findOne({ email: payload.email });
