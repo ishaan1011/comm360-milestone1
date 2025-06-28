@@ -78,14 +78,21 @@ app.use(cors({
 }));
 // ─────────────────────────────────────────────────────────────────────────────
 
-// public: register / login / google / me
+// public: register / login / google / me (must be before authMiddleware)
 app.use('/api/auth', authRoutes);
-
-// ─── Protect all other /api routes with JWT auth ───────────────────────────
-app.use('/api', authMiddleware);
 
 app.use(helmet());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+
+// ─── Protect all other /api routes with JWT auth ───────────────────────────
+// Apply authMiddleware to all /api routes EXCEPT /api/auth
+app.use('/api', (req, res, next) => {
+  // Skip auth middleware for auth routes
+  if (req.path.startsWith('/auth')) {
+    return next();
+  }
+  return authMiddleware(req, res, next);
+});
 
 // ─── Recording upload endpoint ────────────────────────────────────────────
 // Temporarily store uploads, then move into a per-session folder
