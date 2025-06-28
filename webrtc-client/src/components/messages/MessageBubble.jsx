@@ -19,17 +19,20 @@ export default function MessageBubble({
   handleEditCancel,
   replyContext,
 }) {
+  const messageId = msg._id || msg.id;
+  const senderName = msg.senderName || msg.sender || 'Unknown';
+  
   return (
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-xs px-4 py-2 rounded-lg relative group ${isOwn ? 'bg-primary-500 text-white' : 'bg-white text-secondary-900 border border-secondary-200'}`}>
         <div className="flex items-center justify-between">
-          <div className="text-sm font-medium">{msg.sender}</div>
-          <div className="text-xs text-secondary-400 ml-2">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          <div className="text-sm font-medium">{senderName}</div>
+          <div className="text-xs text-secondary-400 ml-2">{new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         </div>
         {replyContext && (
-          <div className="text-xs text-secondary-400 italic mb-1">Replying to: {replyContext.text.slice(0, 30)}{replyContext.text.length > 30 ? '...' : ''}</div>
+          <div className="text-xs text-secondary-400 italic mb-1">Replying to: {(replyContext.text || '').slice(0, 30)}{(replyContext.text || '').length > 30 ? '...' : ''}</div>
         )}
-        {editMsgId === msg.id ? (
+        {editMsgId === messageId ? (
           <div className="flex items-center mt-1">
             <input value={editInput} onChange={e => setEditInput(e.target.value)} className="flex-1 px-2 py-1 border rounded mr-2 text-black" />
             <button onClick={handleEditSave} className="text-primary-600 text-xs font-semibold mr-1">Save</button>
@@ -55,11 +58,11 @@ export default function MessageBubble({
           {(reactions || []).map((emoji, i) => (
             <span key={i} className="text-lg cursor-pointer">{emoji}</span>
           ))}
-          <button onClick={() => setShowEmojiPicker(showEmojiPicker === msg.id ? false : msg.id)} className="ml-1 p-1 rounded hover:bg-secondary-100"><Smile className="h-4 w-4" /></button>
-          {showEmojiPicker === msg.id && (
+          <button onClick={() => setShowEmojiPicker(showEmojiPicker === messageId ? false : messageId)} className="ml-1 p-1 rounded hover:bg-secondary-100"><Smile className="h-4 w-4" /></button>
+          {showEmojiPicker === messageId && (
             <div className="absolute z-10 bg-white border rounded shadow p-2 flex flex-wrap mt-1">
               {emojiList.map(emoji => (
-                <span key={emoji} className="text-xl cursor-pointer m-1" onClick={() => onEmoji(emoji, msg.id)}>{emoji}</span>
+                <span key={emoji} className="text-xl cursor-pointer m-1" onClick={() => onEmoji(emoji, messageId)}>{emoji}</span>
               ))}
             </div>
           )}
@@ -70,7 +73,7 @@ export default function MessageBubble({
           {isOwn && (
             <>
               <button onClick={() => onEdit(msg)} className="p-1 hover:bg-secondary-100 rounded"><Edit className="h-4 w-4" /></button>
-              <button onClick={() => onDelete(msg.id)} className="p-1 hover:bg-secondary-100 rounded"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => onDelete(messageId)} className="p-1 hover:bg-secondary-100 rounded"><Trash2 className="h-4 w-4" /></button>
             </>
           )}
         </div>

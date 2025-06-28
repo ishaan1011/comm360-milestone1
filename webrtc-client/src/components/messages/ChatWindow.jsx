@@ -19,6 +19,7 @@ export default function ChatWindow({
   onEmoji,
   replyContext,
   typing,
+  currentUserId,
 }) {
   const chatRef = useRef(null);
 
@@ -36,14 +37,14 @@ export default function ChatWindow({
           <div className="space-y-2">
             {msgs.map(msg => (
               <MessageBubble
-                key={msg.id}
+                key={msg._id || msg.id}
                 msg={msg}
-                isOwn={msg.sender === 'You'}
+                isOwn={msg.senderId === currentUserId || msg.sender === currentUserId}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onReply={onReply}
                 onEmoji={onEmoji}
-                reactions={reactions[msg.id]}
+                reactions={reactions[msg._id || msg.id]}
                 showEmojiPicker={showEmojiPicker}
                 setShowEmojiPicker={setShowEmojiPicker}
                 emojiList={emojiList}
@@ -52,7 +53,7 @@ export default function ChatWindow({
                 setEditInput={setEditInput}
                 handleEditSave={handleEditSave}
                 handleEditCancel={handleEditCancel}
-                replyContext={replyContext && replyContext.id === msg.id ? replyContext : null}
+                replyContext={replyContext && (replyContext._id === msg._id || replyContext.id === msg.id) ? replyContext : null}
               />
             ))}
           </div>

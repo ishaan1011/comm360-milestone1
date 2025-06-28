@@ -21,39 +21,28 @@ function getInitials(name) {
 }
 
 function getConversationDisplayName(conversation, currentUserId) {
-  console.log('getConversationDisplayName called with:', { conversation, currentUserId });
-  
-  if (!conversation) {
-    console.log('No conversation provided, returning Unknown');
-    return 'Unknown';
-  }
+  if (!conversation) return 'Unknown';
   
   // If conversation has a name (group/community), use it
   if (conversation.name) {
-    console.log('Using conversation name:', conversation.name);
     return conversation.name;
   }
   
   // For DMs, show the other person's name
   if (conversation.type === 'dm' && conversation.members) {
-    console.log('Looking for other member in DM');
     const otherMember = conversation.members.find(m => m._id !== currentUserId);
-    console.log('Other member found:', otherMember);
     if (otherMember) {
-      const displayName = otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
-      console.log('Using member display name:', displayName);
-      return displayName;
+      return otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
     }
   }
   
   // Fallback
-  console.log('Using fallback name: Unknown Conversation');
   return 'Unknown Conversation';
 }
 
 function groupMessagesByDate(messages) {
   return messages.reduce((acc, msg) => {
-    const date = new Date(msg.createdAt || msg.timestamp).toLocaleDateString();
+    const date = new Date(msg.createdAt || msg.timestamp || Date.now()).toLocaleDateString();
     if (!acc[date]) acc[date] = [];
     acc[date].push(msg);
     return acc;
@@ -173,11 +162,6 @@ export default function MessagesPage() {
 
   const handleSelect = (conv) => {
     console.log('Selecting conversation:', conv);
-    console.log('Conversation members:', conv?.members);
-    console.log('Current user ID:', user?.id);
-    console.log('Display name:', getConversationDisplayName(conv, user?.id));
-    console.log('Initials:', getInitials(getConversationDisplayName(conv, user?.id)));
-    
     if (!conv || !conv._id) {
       console.error('Invalid conversation object:', conv);
       return;
@@ -225,7 +209,7 @@ export default function MessagesPage() {
   };
 
   const handleEdit = (msg) => {
-    setEditMsgId(msg._id);
+    setEditMsgId(msg._id || msg.id);
     setEditInput(msg.text);
   };
 
@@ -407,6 +391,7 @@ export default function MessagesPage() {
           onEmoji={handleEmojiClick}
           replyContext={replyTo}
           typing={typing}
+          currentUserId={user?.id}
         />
         {/* Chat input */}
         <ChatInput
