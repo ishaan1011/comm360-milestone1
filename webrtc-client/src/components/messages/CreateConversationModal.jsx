@@ -237,18 +237,37 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
           </div>
         )}
 
-        <div className="p-4 border-b border-gray-200">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder={conversationType === 'dm' ? 'Search users...' : 'Search users to add...'}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+        {conversationType === 'community' && (
+          <div className="p-4 border-b border-gray-200">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center space-x-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Community Information</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    All users in the system will automatically be added to this community.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Only show user search for DMs and groups, not communities */}
+        {conversationType !== 'community' && (
+          <div className="p-4 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder={conversationType === 'dm' ? 'Search users...' : 'Search users to add...'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="p-4 border-b border-gray-200">
@@ -256,66 +275,69 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="text-gray-500 mt-2">Loading users...</p>
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-8">
-              <User className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">
-                {searchTerm ? 'No users found matching your search' : 'No users available'}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredUsers.map((user) => (
-                <button
-                  key={user._id}
-                  onClick={() => handleUserToggle(user)}
-                  className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-left ${
-                    isUserSelected(user) 
-                      ? 'bg-blue-50 border border-blue-200' 
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    {user.avatarUrl ? (
-                      <img
-                        src={user.avatarUrl}
-                        alt={user.fullName || user.username}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-blue-600 font-semibold">
-                        {getInitials(user.fullName || user.username)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
-                      {user.fullName || user.username}
-                    </p>
-                    {user.fullName && (
-                      <p className="text-sm text-gray-500 truncate">@{user.username}</p>
-                    )}
-                  </div>
-                  {conversationType === 'group' && (
-                    <div className="flex items-center">
-                      {isUserSelected(user) ? (
-                        <Plus className="h-4 w-4 text-blue-600" />
+        {/* Only show user list for DMs and groups */}
+        {conversationType !== 'community' && (
+          <div className="flex-1 overflow-y-auto p-4">
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="text-gray-500 mt-2">Loading users...</p>
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-8">
+                <User className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">
+                  {searchTerm ? 'No users found matching your search' : 'No users available'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredUsers.map((user) => (
+                  <button
+                    key={user._id}
+                    onClick={() => handleUserToggle(user)}
+                    className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors text-left ${
+                      isUserSelected(user) 
+                        ? 'bg-blue-50 border border-blue-200' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.fullName || user.username}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
                       ) : (
-                        <div className="h-4 w-4 border-2 border-gray-300 rounded"></div>
+                        <span className="text-blue-600 font-semibold">
+                          {getInitials(user.fullName || user.username)}
+                        </span>
                       )}
                     </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">
+                        {user.fullName || user.username}
+                      </p>
+                      {user.fullName && (
+                        <p className="text-sm text-gray-500 truncate">@{user.username}</p>
+                      )}
+                    </div>
+                    {conversationType === 'group' && (
+                      <div className="flex items-center">
+                        {isUserSelected(user) ? (
+                          <Plus className="h-4 w-4 text-blue-600" />
+                        ) : (
+                          <div className="h-4 w-4 border-2 border-gray-300 rounded"></div>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {conversationType === 'group' && selectedUsers.length > 0 && (
           <div className="p-4 border-t border-gray-200">

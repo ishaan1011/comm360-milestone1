@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Crown, Users, Hash, Edit, Save, X as CloseIcon, Plus, UserPlus, UserMinus, Shield } from 'lucide-react';
+import { X, Crown, Users, Hash, Edit, Save, X as CloseIcon, Plus, UserPlus, UserMinus, Shield, MoreVertical } from 'lucide-react';
 import API from '../../api/client';
 
 function getInitials(name) {
