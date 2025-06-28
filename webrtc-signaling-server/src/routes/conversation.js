@@ -9,10 +9,10 @@ router.get('/', ctrl.listConversations);
 router.post('/', ctrl.createConversation);
 router.get('/:conversationId', ctrl.getConversation);
 router.put('/:conversationId', ctrl.updateConversation);
-router.post('/:conversationId/add-member', ctrl.addMember);
-router.post('/:conversationId/remove-member', ctrl.removeMember);
-router.post('/:conversationId/add-admin', ctrl.addAdmin);
-router.post('/:conversationId/remove-admin', ctrl.removeAdmin);
+router.post('/:conversationId/members', ctrl.addMember);
+router.delete('/:conversationId/members/:userId', ctrl.removeMember);
+router.post('/:conversationId/admins', ctrl.addAdmin);
+router.delete('/:conversationId/admins/:userId', ctrl.removeAdmin);
 router.delete('/:conversationId', ctrl.deleteConversation);
 
 export default router; 

@@ -1,6 +1,7 @@
 import Conversation from '../models/conversation.js';
 import User from '../models/user.js';
 import Message from '../models/message.js';
+import mongoose from 'mongoose';
 
 // List all conversations for the current user
 export async function listConversations(req, res, next) {
@@ -67,19 +68,45 @@ export async function createConversation(req, res, next) {
       }
     }
 
-    // For communities, require name
+    // For communities, require name and add all users
     if (type === 'community') {
       if (!name || !name.trim()) {
         return res.status(400).json({ message: 'Community name is required' });
       }
+      
+      // Get all users for community
+      const User = mongoose.model('User');
+      const allUsers = await User.find({}, '_id');
+      const allUserIds = allUsers.map(user => user._id);
+      
+      // Create conversation with all users
+      const conversation = new Conversation({
+        type,
+        name: name.trim(),
+        description: description?.trim(),
+        members: allUserIds, // All users are members
+        admins: [userId], // Creator is admin
+        createdBy: userId,
+      });
+
+      await conversation.save();
+
+      // Populate members for response
+      await conversation.populate('members', 'username fullName avatarUrl');
+
+      res.status(201).json({ 
+        message: 'Community created successfully',
+        conversation 
+      });
+      return;
     }
 
-    // Create conversation
+    // Create conversation for DMs and groups
     const conversation = new Conversation({
       type,
       name: name?.trim(),
       description: description?.trim(),
-      members: type === 'community' ? [] : [userId, ...memberIds], // Communities start empty
+      members: [userId, ...memberIds],
       admins: [userId], // Creator is admin
       createdBy: userId,
     });
@@ -148,8 +175,7 @@ export async function addMember(req, res, next) {
 // Remove a member from a conversation
 export async function removeMember(req, res, next) {
   try {
-    const { conversationId } = req.params;
-    const { userId } = req.body;
+    const { conversationId, userId } = req.params;
     const currentUserId = req.user.id;
 
     const conversation = await Conversation.findById(conversationId);
@@ -167,7 +193,12 @@ export async function removeMember(req, res, next) {
     }
 
     conversation.members = conversation.members.filter(id => id.toString() !== userId);
+    // Also remove from admins if they were an admin
+    conversation.admins = conversation.admins.filter(id => id.toString() !== userId);
     await conversation.save();
+
+    // Populate members for response
+    await conversation.populate('members', 'username fullName avatarUrl');
 
     res.json({ message: 'Member removed successfully', conversation });
   } catch (err) {
@@ -303,8 +334,7 @@ export async function addAdmin(req, res, next) {
 // Remove an admin from a conversation
 export async function removeAdmin(req, res, next) {
   try {
-    const { conversationId } = req.params;
-    const { userId: adminId } = req.body;
+    const { conversationId, userId } = req.params;
     const currentUserId = req.user.id;
 
     const conversation = await Conversation.findById(conversationId);
@@ -317,26 +347,23 @@ export async function removeAdmin(req, res, next) {
       return res.status(403).json({ message: 'Only the owner can remove admins' });
     }
 
-    // Cannot remove the owner
-    if (adminId === conversation.createdBy) {
-      return res.status(400).json({ message: 'Cannot remove the owner as admin' });
-    }
-
     // Check if user is an admin
-    if (!conversation.admins.includes(adminId)) {
+    if (!conversation.admins.includes(userId)) {
       return res.status(400).json({ message: 'User is not an admin' });
     }
 
-    conversation.admins = conversation.admins.filter(id => id.toString() !== adminId);
+    // Cannot remove the owner from admin
+    if (userId === conversation.createdBy) {
+      return res.status(400).json({ message: 'Cannot remove the owner from admin' });
+    }
+
+    conversation.admins = conversation.admins.filter(id => id.toString() !== userId);
     await conversation.save();
 
     // Populate members for response
     await conversation.populate('members', 'username fullName avatarUrl');
 
-    res.json({ 
-      message: 'Admin removed successfully',
-      conversation 
-    });
+    res.json({ message: 'Admin removed successfully', conversation });
   } catch (err) {
     next(err);
   }

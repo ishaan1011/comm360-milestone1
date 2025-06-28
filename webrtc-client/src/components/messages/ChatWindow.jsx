@@ -29,6 +29,11 @@ export default function ChatWindow({
     }
   }, [grouped, typing]);
 
+  // Get typing users
+  const typingUsers = Object.keys(typing || {}).filter(userId => 
+    typing[userId] && userId !== currentUserId
+  );
+
   return (
     <div ref={chatRef} className="flex-1 overflow-y-auto p-6 space-y-8 bg-secondary-50">
       {Object.entries(grouped).map(([date, msgs]) => (
@@ -63,7 +68,22 @@ export default function ChatWindow({
           </div>
         </div>
       ))}
-      {typing && <div className="text-xs text-secondary-400">Someone is typing...</div>}
+      
+      {/* Enhanced Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <div className="flex items-center space-x-2 text-xs text-secondary-400 p-2 bg-secondary-100 rounded-lg">
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-secondary-400 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
+          <span>
+            {typingUsers.length === 1 ? 'Someone is typing...' : 
+             typingUsers.length === 2 ? '2 people are typing...' : 
+             `${typingUsers.length} people are typing...`}
+          </span>
+        </div>
+      )}
     </div>
   );
 } 
