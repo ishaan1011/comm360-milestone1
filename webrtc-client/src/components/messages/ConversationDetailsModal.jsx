@@ -53,7 +53,7 @@ export default function ConversationDetailsModal({
   const isOwner = conversation?.createdBy === currentUserId;
   const isAdmin = conversation?.admins?.includes(currentUserId);
   const canEdit = isAdmin || conversation?.type === 'dm';
-  const canManageMembers = isAdmin && conversation?.type !== 'dm';
+  const canManageMembers = (isOwner || isAdmin) && conversation?.type !== 'dm';
 
   const handleSaveName = async () => {
     if (!name.trim()) {
@@ -94,6 +94,7 @@ export default function ConversationDetailsModal({
       setMemberActionMenu(null);
       setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
+      console.error('Admin add error:', error);
       setError(error.response?.data?.message || 'Failed to add admin');
       setTimeout(() => setError(null), 3000);
     }
@@ -107,6 +108,7 @@ export default function ConversationDetailsModal({
       setMemberActionMenu(null);
       setTimeout(() => setSuccess(null), 3000);
     } catch (error) {
+      console.error('Admin remove error:', error);
       setError(error.response?.data?.message || 'Failed to remove admin');
       setTimeout(() => setError(null), 3000);
     }
@@ -343,7 +345,8 @@ export default function ConversationDetailsModal({
                           {member._id === conversation.createdBy && (
                             <span className="text-xs text-purple-600 font-medium">Owner</span>
                           )}
-                          {conversation.admins?.includes(member._id) && (
+                          {(conversation.type === 'group' || conversation.type === 'community') && 
+                           conversation.admins?.includes(member._id) && (
                             <span className="text-xs text-blue-600 flex items-center">
                               <Crown className="h-3 w-3 mr-1" />
                               Admin
@@ -365,22 +368,25 @@ export default function ConversationDetailsModal({
                   {/* Member Action Menu */}
                   {memberActionMenu === member._id && canManageMembers && member._id !== currentUserId && (
                     <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-32">
-                      {!conversation.admins?.includes(member._id) ? (
-                        <button
-                          onClick={() => handleMakeAdmin(member._id)}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2"
-                        >
-                          <Shield className="h-4 w-4" />
-                          <span>Make Admin</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRemoveAdmin(member._id)}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2 text-red-600"
-                        >
-                          <UserMinus className="h-4 w-4" />
-                          <span>Remove Admin</span>
-                        </button>
+                      {/* Only show admin options for groups and communities, not DMs */}
+                      {(conversation.type === 'group' || conversation.type === 'community') && (
+                        !conversation.admins?.includes(member._id) ? (
+                          <button
+                            onClick={() => handleMakeAdmin(member._id)}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2"
+                          >
+                            <Shield className="h-4 w-4" />
+                            <span>Make Admin</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRemoveAdmin(member._id)}
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center space-x-2 text-red-600"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                            <span>Remove Admin</span>
+                          </button>
+                        )
                       )}
                       <button
                         onClick={() => handleRemoveMember(member._id)}
