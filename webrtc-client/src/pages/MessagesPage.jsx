@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { User, Users, Hash, Plus, Search, MoreVertical, Settings } from 'lucide-react';
+import React, { useState, useEffect, useContext } from 'react';
+import { User, Users, Hash, Plus, Search, MoreVertical, Settings, Star, Trash2, Send, Paperclip, Smile } from 'lucide-react';
 import SidebarConversation from '../components/messages/SidebarConversation';
 import ChatWindow from '../components/messages/ChatWindow';
 import ChatInput from '../components/messages/ChatInput';
@@ -7,10 +7,11 @@ import SettingsPanel from '../components/messages/SettingsPanel';
 import CreateConversationModal from '../components/messages/CreateConversationModal';
 import UserSelectionModal from '../components/messages/UserSelectionModal';
 import ConversationSettingsModal from '../components/messages/ConversationSettingsModal';
+import ConversationDetailsModal from '../components/messages/ConversationDetailsModal';
 import * as conversationAPI from '../api/conversationService';
 import * as messageAPI from '../api/messageService';
 import { useAuth } from '../context/AuthContext';
-import { useChatSocket } from '../context/ChatSocketContext';
+import { ChatSocketContext } from '../context/ChatSocketContext';
 
 // Placeholder for emoji list
 const emojiList = ['😀','😂','😍','👍','🎉','😢','😮','🔥','🙏','❤️','🚀','😎'];
@@ -93,7 +94,7 @@ function groupMessagesByDate(messages) {
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const chatSocket = useChatSocket();
+  const { chatSocket } = useContext(ChatSocketContext);
   const [allConversations, setAllConversations] = useState([]);
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -102,8 +103,9 @@ export default function MessagesPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [starred, setStarred] = useState([]);
-  const [typing, setTyping] = useState(false);
+  const [typing, setTyping] = useState({});
   const [editMsgId, setEditMsgId] = useState(null);
   const [editInput, setEditInput] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -111,7 +113,7 @@ export default function MessagesPage() {
   const [reactions, setReactions] = useState({});
   const [replyTo, setReplyTo] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState({ notifications: true, sound: true, dark: false });
+  const [settings, setSettings] = useState({ dark: false });
   const [notification, setNotification] = useState(null);
 
   // Fetch conversations on mount (REST)
@@ -523,7 +525,10 @@ export default function MessagesPage() {
       <div className="flex-1 flex flex-col">
         {/* Chat header */}
         <div className="border-b border-secondary-200 px-6 py-4 font-semibold text-lg bg-white flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div 
+            className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+            onClick={() => selected && setShowDetailsModal(true)}
+          >
             {selected && selected.avatar ? (
               <img src={selected.avatar} alt={selected.name || 'Conversation'} className="h-8 w-8 rounded-full object-cover" />
             ) : (
@@ -531,7 +536,14 @@ export default function MessagesPage() {
                 {selected ? getInitials(getConversationDisplayName(selected, user?.id)) : ''}
               </div>
             )}
-            <span>{selected ? getConversationDisplayName(selected, user?.id) : ''}</span>
+            <div className="flex flex-col">
+              <span>{selected ? getConversationDisplayName(selected, user?.id) : ''}</span>
+              {selected && (selected.type === 'group' || selected.type === 'community') && (
+                <span className="text-xs text-gray-500 font-normal">
+                  {selected.members?.length || 0} members
+                </span>
+              )}
+            </div>
             {selected && selected.status && (
               <span className={`h-3 w-3 rounded-full ${selected.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
             )}
@@ -624,6 +636,15 @@ export default function MessagesPage() {
         currentUserId={user?.id}
         onConversationUpdated={handleConversationUpdated}
         onConversationDeleted={() => handleConversationDeleted(selected?._id)}
+      />
+
+      {/* Conversation Details Modal */}
+      <ConversationDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        conversation={selected}
+        currentUserId={user?.id}
+        onConversationUpdated={handleConversationUpdated}
       />
     </div>
   );

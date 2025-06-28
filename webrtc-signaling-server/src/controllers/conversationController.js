@@ -29,7 +29,7 @@ export async function listConversations(req, res, next) {
 // Create a new conversation
 export async function createConversation(req, res, next) {
   try {
-    const { type, memberIds = [], name } = req.body;
+    const { type, memberIds = [], name, description } = req.body;
     const userId = req.user.id;
 
     // Validate conversation type
@@ -78,6 +78,7 @@ export async function createConversation(req, res, next) {
     const conversation = new Conversation({
       type,
       name: name?.trim(),
+      description: description?.trim(),
       members: type === 'community' ? [] : [userId, ...memberIds], // Communities start empty
       admins: [userId], // Creator is admin
       createdBy: userId,
@@ -214,7 +215,7 @@ export async function deleteConversation(req, res, next) {
 export async function updateConversation(req, res, next) {
   try {
     const { conversationId } = req.params;
-    const { name } = req.body;
+    const { name, description } = req.body;
     const userId = req.user.id;
 
     const conversation = await Conversation.findById(conversationId);
@@ -222,13 +223,25 @@ export async function updateConversation(req, res, next) {
       return res.status(404).json({ message: 'Conversation not found' });
     }
 
-    // Check if user is admin
-    if (!conversation.admins.includes(userId)) {
-      return res.status(403).json({ message: 'Only admins can update conversation' });
+    // Check permissions
+    if (conversation.type === 'dm') {
+      // For DMs, any member can update
+      if (!conversation.members.includes(userId)) {
+        return res.status(403).json({ message: 'Not authorized to update this conversation' });
+      }
+    } else {
+      // For groups and communities, only admins can update
+      if (!conversation.admins.includes(userId)) {
+        return res.status(403).json({ message: 'Only admins can update conversation' });
+      }
     }
 
     if (name !== undefined) {
       conversation.name = name.trim();
+    }
+
+    if (description !== undefined) {
+      conversation.description = description.trim();
     }
 
     await conversation.save();

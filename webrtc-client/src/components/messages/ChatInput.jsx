@@ -13,9 +13,14 @@ export default function ChatInput({
   return (
     <div className="p-4 border-t border-secondary-200 bg-white">
       <div className="flex space-x-2 items-center">
-        <label className="cursor-pointer p-2 rounded hover:bg-secondary-100">
+        <label className="cursor-pointer p-2 rounded hover:bg-secondary-100" title="Upload any file type">
           <Paperclip className="h-5 w-5" />
-          <input type="file" className="hidden" onChange={onFileChange} />
+          <input 
+            type="file" 
+            className="hidden" 
+            onChange={onFileChange}
+            accept="*/*"
+          />
         </label>
         <input
           type="text"
@@ -36,7 +41,10 @@ export default function ChatInput({
           {uploadFile.type && uploadFile.type.startsWith('image/') ? (
             <img src={URL.createObjectURL(uploadFile)} alt={uploadFile.name} className="h-12 w-12 object-cover rounded" />
           ) : (
-            <span className="text-secondary-700">{uploadFile.name}</span>
+            <div className="flex items-center space-x-2">
+              <span className="text-secondary-700">{uploadFile.name}</span>
+              <span className="text-xs text-secondary-500">({uploadFile.type || 'Unknown type'})</span>
+            </div>
           )}
           <button onClick={onRemoveFile} className="p-1 rounded hover:bg-secondary-200"><X className="h-4 w-4" /></button>
         </div>

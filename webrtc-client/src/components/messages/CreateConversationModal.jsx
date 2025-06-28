@@ -17,8 +17,10 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [groupName, setGroupName] = useState('');
+  const [groupDescription, setGroupDescription] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [communityName, setCommunityName] = useState('');
+  const [communityDescription, setCommunityDescription] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -95,8 +97,10 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
 
       if (conversationType === 'group') {
         conversationData.name = groupName.trim();
+        conversationData.description = groupDescription.trim();
       } else if (conversationType === 'community') {
         conversationData.name = communityName.trim();
+        conversationData.description = communityDescription.trim();
       }
 
       const response = await API.post('/api/conversations', conversationData);
@@ -122,8 +126,10 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
     setSearchTerm('');
     setError(null);
     setGroupName('');
+    setGroupDescription('');
     setSelectedUsers([]);
     setCommunityName('');
+    setCommunityDescription('');
     onClose();
   };
 
@@ -182,17 +188,31 @@ export default function CreateConversationModal({ isOpen, onClose, onConversatio
         </div>
 
         {(conversationType === 'group' || conversationType === 'community') && (
-          <div className="p-4 border-b border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {conversationType === 'group' ? 'Group Name' : 'Community Name'}
-            </label>
-            <input
-              type="text"
-              placeholder={conversationType === 'group' ? 'Enter group name...' : 'Enter community name...'}
-              value={conversationType === 'group' ? groupName : communityName}
-              onChange={(e) => conversationType === 'group' ? setGroupName(e.target.value) : setCommunityName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="p-4 border-b border-gray-200 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {conversationType === 'group' ? 'Group Name' : 'Community Name'}
+              </label>
+              <input
+                type="text"
+                placeholder={conversationType === 'group' ? 'Enter group name...' : 'Enter community name...'}
+                value={conversationType === 'group' ? groupName : communityName}
+                onChange={(e) => conversationType === 'group' ? setGroupName(e.target.value) : setCommunityName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (Optional)
+              </label>
+              <textarea
+                placeholder={conversationType === 'group' ? 'Enter group description...' : 'Enter community description...'}
+                value={conversationType === 'group' ? groupDescription : communityDescription}
+                onChange={(e) => conversationType === 'group' ? setGroupDescription(e.target.value) : setCommunityDescription(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
           </div>
         )}
 
