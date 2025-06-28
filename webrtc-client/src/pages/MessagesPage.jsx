@@ -4,6 +4,7 @@ import SidebarConversation from '../components/messages/SidebarConversation';
 import ChatWindow from '../components/messages/ChatWindow';
 import ChatInput from '../components/messages/ChatInput';
 import SettingsPanel from '../components/messages/SettingsPanel';
+import UserSelectionModal from '../components/messages/UserSelectionModal';
 import * as conversationAPI from '../api/conversationService';
 import * as messageAPI from '../api/messageService';
 import { useAuth } from '../context/AuthContext';
@@ -33,8 +34,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('dm');
+  const [showUserModal, setShowUserModal] = useState(false);
   const [starred, setStarred] = useState([]);
   const [typing, setTyping] = useState(false);
   const [editMsgId, setEditMsgId] = useState(null);
@@ -49,7 +49,12 @@ export default function MessagesPage() {
 
   // Fetch conversations on mount (REST)
   useEffect(() => {
-    conversationAPI.getConversations().then(res => {
+    fetchConversations();
+  }, []);
+
+  const fetchConversations = async () => {
+    try {
+      const res = await conversationAPI.getConversations();
       console.log('Conversations API response:', res);
       const conversations = res.data.conversations || res.data || [];
       console.log('Processed conversations:', conversations);
@@ -66,11 +71,10 @@ export default function MessagesPage() {
         console.log('Auto-selecting first conversation:', first);
         handleSelect(first);
       }
-    }).catch(error => {
+    } catch (error) {
       console.error('Error fetching conversations:', error);
-    });
-    // eslint-disable-next-line
-  }, []);
+    }
+  };
 
   // Fetch messages when a conversation is selected (REST, then join room)
   useEffect(() => {
@@ -201,9 +205,35 @@ export default function MessagesPage() {
     // Optionally: persist star via API
   };
 
-  const handleNewConversation = async () => {
-    setShowModal(false);
-    // TODO: Create new conversation via API
+  const handleUserSelect = async (selectedUser) => {
+    try {
+      console.log('Creating DM with user:', selectedUser);
+      const response = await conversationAPI.createConversation({
+        type: 'dm',
+        memberIds: [selectedUser._id]
+      });
+      
+      console.log('Conversation creation response:', response);
+      const newConversation = response.data.conversation;
+      
+      // Refresh conversations list
+      await fetchConversations();
+      
+      // Select the new conversation
+      handleSelect(newConversation);
+      
+      setNotification({
+        message: response.data.message || 'Conversation created successfully!'
+      });
+      
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      setNotification({
+        message: error.response?.data?.message || 'Failed to create conversation'
+      });
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -240,7 +270,13 @@ export default function MessagesPage() {
       <div className="w-80 bg-secondary-50 border-r border-secondary-200 flex flex-col">
         <div className="p-4 border-b border-secondary-200 font-bold text-lg flex items-center justify-between">
           Messages
-          <button onClick={() => { setShowModal(true); setModalType('dm'); }} className="p-1 hover:bg-secondary-100 rounded"><Plus className="h-5 w-5" /></button>
+          <button 
+            onClick={() => setShowUserModal(true)} 
+            className="p-1 hover:bg-secondary-100 rounded"
+            title="New Direct Message"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
         </div>
         <div className="p-2">
           <div className="relative">
@@ -260,9 +296,6 @@ export default function MessagesPage() {
               <div className="flex items-center px-4 py-2 text-secondary-500 uppercase text-xs font-semibold">
                 <section.icon className="h-4 w-4 mr-2" />
                 {section.section}
-                {section.section !== 'Direct Messages' && (
-                  <button onClick={() => { setShowModal(true); setModalType(section.section.toLowerCase()); }} className="ml-auto p-1 hover:bg-secondary-100 rounded"><Plus className="h-4 w-4" /></button>
-                )}
               </div>
               {section.items.map(conv => (
                 <SidebarConversation
@@ -349,19 +382,14 @@ export default function MessagesPage() {
         )}
         <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} setSettings={setSettings} />
       </div>
-      {/* New Conversation Modal (mock) */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 transition-opacity animate-fade-in">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-96">
-            <h2 className="text-lg font-bold mb-4">New {modalType.charAt(0).toUpperCase() + modalType.slice(1)}</h2>
-            <input className="w-full mb-4 px-3 py-2 border rounded" placeholder={`Enter ${modalType} name...`} />
-            <div className="flex justify-end space-x-2">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded bg-secondary-100 text-secondary-700">Cancel</button>
-              <button onClick={handleNewConversation} className="px-4 py-2 rounded bg-primary-500 text-white">Create</button>
-            </div>
-          </div>
-        </div>
-      )}
+      
+      {/* User Selection Modal */}
+      <UserSelectionModal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        onSelectUser={handleUserSelect}
+        currentUserId={user?.id}
+      />
     </div>
   );
 } 

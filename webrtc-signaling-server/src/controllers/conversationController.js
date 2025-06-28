@@ -19,6 +19,61 @@ export async function createConversation(req, res, next) {
   try {
     const { type, name, memberIds } = req.body;
     const userId = req.user.id;
+
+    // Handle DM creation with validation
+    if (type === 'dm') {
+      // Validate DM requirements
+      if (!memberIds || memberIds.length !== 1) {
+        return res.status(400).json({ 
+          message: 'Direct messages must have exactly one other participant' 
+        });
+      }
+
+      const otherUserId = memberIds[0];
+
+      // Prevent self-DM
+      if (otherUserId === userId) {
+        return res.status(400).json({ 
+          message: 'Cannot create a direct message with yourself' 
+        });
+      }
+
+      // Check if the other user exists
+      const otherUser = await User.findById(otherUserId);
+      if (!otherUser) {
+        return res.status(404).json({ 
+          message: 'Selected user not found' 
+        });
+      }
+
+      // Check if DM already exists between these two users
+      const existingDM = await Conversation.findOne({
+        type: 'dm',
+        members: { $all: [userId, otherUserId] },
+        $expr: { $eq: [{ $size: '$members' }, 2] }
+      }).populate('members', 'username fullName avatarUrl');
+
+      if (existingDM) {
+        return res.json({ 
+          conversation: existingDM,
+          message: 'Existing conversation found'
+        });
+      }
+
+      // Create new DM
+      const conversation = new Conversation({
+        type: 'dm',
+        members: [userId, otherUserId],
+        createdBy: userId,
+      });
+      await conversation.save();
+      
+      const populatedConversation = await conversation.populate('members', 'username fullName avatarUrl');
+      res.status(201).json({ conversation: populatedConversation });
+      return;
+    }
+
+    // Handle group/community creation
     const members = Array.from(new Set([userId, ...(memberIds || [])]));
     const conversation = new Conversation({
       type,
@@ -28,7 +83,9 @@ export async function createConversation(req, res, next) {
       createdBy: userId,
     });
     await conversation.save();
-    res.status(201).json({ conversation });
+    
+    const populatedConversation = await conversation.populate('members', 'username fullName avatarUrl');
+    res.status(201).json({ conversation: populatedConversation });
   } catch (err) {
     next(err);
   }

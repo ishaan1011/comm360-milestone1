@@ -26,6 +26,7 @@ import authRoutes from './src/routes/auth.js';
 import authMiddleware from './src/middleware/auth.js';
 import conversationRoutes from './src/routes/conversation.js';
 import messageRoutes from './src/routes/message.js';
+import userRoutes from './src/routes/user.js';
 
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -693,6 +694,7 @@ app.get('/api/rooms', (req, res) => {
 // Register new conversation and message routes
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/users', userRoutes);
 
 // Serve uploaded message files statically from /uploads/messages at /uploads/messages/*.
 app.use('/uploads/messages', express.static(path.join(process.cwd(), 'uploads', 'messages')));
