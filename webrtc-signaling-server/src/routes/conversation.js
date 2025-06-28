@@ -7,9 +7,9 @@ router.use(authMiddleware);
 
 router.get('/', ctrl.listConversations);
 router.post('/', ctrl.createConversation);
-router.get('/:id', ctrl.getConversation);
-router.post('/:id/add-member', ctrl.addMember);
-router.post('/:id/remove-member', ctrl.removeMember);
-router.delete('/:id', ctrl.deleteConversation);
+router.get('/:conversationId', ctrl.getConversation);
+router.post('/:conversationId/add-member', ctrl.addMember);
+router.post('/:conversationId/remove-member', ctrl.removeMember);
+router.delete('/:conversationId', ctrl.deleteConversation);
 
 export default router; 

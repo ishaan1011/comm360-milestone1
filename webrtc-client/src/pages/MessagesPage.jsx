@@ -4,6 +4,7 @@ import SidebarConversation from '../components/messages/SidebarConversation';
 import ChatWindow from '../components/messages/ChatWindow';
 import ChatInput from '../components/messages/ChatInput';
 import SettingsPanel from '../components/messages/SettingsPanel';
+import CreateConversationModal from '../components/messages/CreateConversationModal';
 import UserSelectionModal from '../components/messages/UserSelectionModal';
 import * as conversationAPI from '../api/conversationService';
 import * as messageAPI from '../api/messageService';
@@ -98,6 +99,7 @@ export default function MessagesPage() {
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [starred, setStarred] = useState([]);
   const [typing, setTyping] = useState(false);
   const [editMsgId, setEditMsgId] = useState(null);
@@ -203,29 +205,11 @@ export default function MessagesPage() {
         console.log('Display name:', displayName);
         
         const memberNames = conv.members?.map(m => {
-          console.log('Processing member:', m);
-          console.log('Member type:', typeof m);
-          
-          // Safe way to get object keys
-          try {
-            if (m && typeof m === 'object') {
-              const keys = Object.keys(m);
-              console.log('Member keys:', keys);
-            } else {
-              console.log('Member is not an object, no keys to log');
-            }
-          } catch (error) {
-            console.error('Error getting member keys:', error);
-          }
-          
           // Ensure we're not accidentally rendering the member object
           if (typeof m === 'object' && m !== null) {
             const name = m.fullName || m.username || m.email || '';
-            console.log('Extracted member name:', name);
             return String(name);
           }
-          
-          console.log('Member is not an object, returning empty string');
           return '';
         }).join(' ') || '';
         
@@ -251,12 +235,6 @@ export default function MessagesPage() {
   });
 
   const handleSelect = (conv) => {
-    console.log('Selecting conversation:', conv);
-    console.log('Conversation type:', typeof conv);
-    console.log('Conversation members:', conv?.members);
-    console.log('First member:', conv?.members?.[0]);
-    console.log('First member type:', typeof conv?.members?.[0]);
-    
     if (!conv || !conv._id) {
       console.error('Invalid conversation object:', conv);
       return;
@@ -328,6 +306,60 @@ export default function MessagesPage() {
     // Optionally: persist star via API
   };
 
+  const handleDeleteConversation = async (conv) => {
+    if (!conv || !conv._id) return;
+    
+    try {
+      await conversationAPI.deleteConversation(conv._id);
+      
+      // Remove from conversations list
+      setAllConversations(prev => prev.map(section => ({
+        ...section,
+        items: section.items.filter(c => c._id !== conv._id)
+      })));
+      
+      // If this was the selected conversation, clear selection
+      if (selected && selected._id === conv._id) {
+        setSelected(null);
+        setMessages([]);
+      }
+      
+      setNotification({
+        message: 'Conversation deleted successfully'
+      });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      setNotification({
+        message: error.response?.data?.message || 'Failed to delete conversation'
+      });
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  const handleConversationCreated = (newConversation) => {
+    // Add to conversations list
+    setAllConversations(prev => {
+      const newSections = [...prev];
+      const sectionIndex = newSections.findIndex(s => s.section === 
+        (newConversation.type === 'dm' ? 'Direct Messages' : 
+         newConversation.type === 'group' ? 'Groups' : 'Communities'));
+      
+      if (sectionIndex !== -1) {
+        newSections[sectionIndex].items.push(newConversation);
+      }
+      return newSections;
+    });
+    
+    // Select the new conversation
+    handleSelect(newConversation);
+    
+    setNotification({
+      message: 'Conversation created successfully!'
+    });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const handleUserSelect = async (selectedUser) => {
     try {
       console.log('Creating DM with user:', selectedUser);
@@ -394,9 +426,9 @@ export default function MessagesPage() {
         <div className="p-4 border-b border-secondary-200 font-bold text-lg flex items-center justify-between">
           Messages
           <button 
-            onClick={() => setShowUserModal(true)} 
+            onClick={() => setShowCreateModal(true)} 
             className="p-1 hover:bg-secondary-100 rounded"
-            title="New Direct Message"
+            title="New Conversation"
           >
             <Plus className="h-5 w-5" />
           </button>
@@ -438,9 +470,15 @@ export default function MessagesPage() {
                         isActive={selected && selected._id === conv._id}
                         onSelect={() => handleSelect(conv)}
                         onStar={() => handleStar(conv._id)}
+                        onDelete={() => handleDeleteConversation(conv)}
                         starred={starred.includes(conv._id)}
                         getInitials={getInitials}
                         currentUserId={user?.id}
+                        canDelete={
+                          conv.type === 'dm' || 
+                          (conv.type === 'group' && conv.admins?.includes(user?.id)) ||
+                          (conv.type === 'community' && conv.admins?.includes(user?.id))
+                        }
                       />
                     );
                   })}
@@ -527,6 +565,14 @@ export default function MessagesPage() {
         isOpen={showUserModal}
         onClose={() => setShowUserModal(false)}
         onSelectUser={handleUserSelect}
+        currentUserId={user?.id}
+      />
+
+      {/* Create Conversation Modal */}
+      <CreateConversationModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onConversationCreated={handleConversationCreated}
         currentUserId={user?.id}
       />
     </div>
