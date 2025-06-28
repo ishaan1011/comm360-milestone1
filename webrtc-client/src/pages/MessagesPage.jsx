@@ -21,22 +21,36 @@ function getInitials(name) {
 }
 
 function getConversationDisplayName(conversation, currentUserId) {
-  if (!conversation) return 'Unknown';
+  console.log('getConversationDisplayName called with:', { conversation, currentUserId });
+  
+  if (!conversation) {
+    console.log('No conversation provided, returning Unknown');
+    return 'Unknown';
+  }
   
   // If conversation has a name (group/community), use it
   if (conversation.name) {
+    console.log('Using conversation name:', conversation.name);
     return conversation.name;
   }
   
   // For DMs, show the other person's name
   if (conversation.type === 'dm' && conversation.members) {
+    console.log('Looking for other member in DM');
     const otherMember = conversation.members.find(m => m._id !== currentUserId);
+    console.log('Other member found:', otherMember);
+    console.log('Other member type:', typeof otherMember);
+    
     if (otherMember) {
-      return otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
+      const displayName = otherMember.fullName || otherMember.username || otherMember.email || 'Unknown User';
+      console.log('Using member display name:', displayName);
+      console.log('Display name type:', typeof displayName);
+      return displayName;
     }
   }
   
   // Fallback
+  console.log('Using fallback name: Unknown Conversation');
   return 'Unknown Conversation';
 }
 
@@ -153,8 +167,21 @@ export default function MessagesPage() {
   const filteredConversations = allConversations.map(section => ({
     ...section,
     items: section.items.filter(conv => {
+      console.log('Filtering conversation:', conv);
+      console.log('Conversation members:', conv.members);
+      
       const displayName = getConversationDisplayName(conv, user?.id);
-      const memberNames = conv.members?.map(m => m.fullName || m.username || m.email || '').join(' ') || '';
+      console.log('Display name:', displayName);
+      
+      const memberNames = conv.members?.map(m => {
+        console.log('Processing member:', m);
+        const name = m.fullName || m.username || m.email || '';
+        console.log('Member name:', name);
+        return name;
+      }).join(' ') || '';
+      
+      console.log('Member names string:', memberNames);
+      
       return displayName.toLowerCase().includes(search.toLowerCase()) || 
              memberNames.toLowerCase().includes(search.toLowerCase());
     }),
@@ -162,6 +189,11 @@ export default function MessagesPage() {
 
   const handleSelect = (conv) => {
     console.log('Selecting conversation:', conv);
+    console.log('Conversation type:', typeof conv);
+    console.log('Conversation members:', conv?.members);
+    console.log('First member:', conv?.members?.[0]);
+    console.log('First member type:', typeof conv?.members?.[0]);
+    
     if (!conv || !conv._id) {
       console.error('Invalid conversation object:', conv);
       return;
