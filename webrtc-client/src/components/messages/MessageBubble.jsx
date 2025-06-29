@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smile, Edit, Trash2, Reply, Download, X, Maximize2, Check, CheckCheck, Play, Pause, Volume2, FileText, Code, Archive } from 'lucide-react';
+import { Smile, Edit, Trash2, Reply, Download, X, Check, CheckCheck, Play, Pause, Volume2, FileText, Code, Archive } from 'lucide-react';
 import { downloadFile, getFileIcon, formatFileSize, canPreview, getPreviewUrl } from '../../api/messageService';
 
 export default function MessageBubble({
@@ -22,7 +22,6 @@ export default function MessageBubble({
   messageStatus,
 }) {
   const messageId = msg._id || msg.id;
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
   
@@ -52,38 +51,24 @@ export default function MessageBubble({
   const isImage = msg.file && msg.file.type && msg.file.type.startsWith('image/');
   const isVideo = msg.file && msg.file.type && msg.file.type.startsWith('video/');
   const isAudio = msg.file && msg.file.type && msg.file.type.startsWith('audio/');
-  const isDocument = msg.file && (msg.file.type.startsWith('application/pdf') || 
-                                 msg.file.type.includes('document') || 
-                                 msg.file.type.includes('spreadsheet') || 
-                                 msg.file.type.includes('presentation'));
-  const isCode = msg.file && (msg.file.type.startsWith('text/') || 
-                             msg.file.type.includes('json') || 
-                             msg.file.type.includes('xml') || 
-                             msg.file.type.includes('javascript'));
-  const isArchive = msg.file && (msg.file.type.includes('zip') || 
-                                msg.file.type.includes('rar') || 
-                                msg.file.type.includes('compressed') || 
-                                msg.file.type.includes('tar'));
-  
-  // Get message status
-  const status = messageStatus?.get(messageId) || { sent: true, delivered: false, read: false };
-  
-  // Render status indicator
+  const isDocument = msg.file && msg.file.type && (msg.file.type.startsWith('application/pdf') || msg.file.type.includes('document') || msg.file.type.includes('spreadsheet') || msg.file.type.includes('presentation'));
+
   const renderStatusIndicator = () => {
-    if (!isOwn) return null;
+    if (!messageStatus) return null;
     
+    const status = messageStatus[messageId];
+    if (!status) return null;
+
     if (status.read) {
-      return <CheckCheck className="h-3 w-3 text-blue-500" />;
+      return <CheckCheck className="h-3 w-3" />;
     } else if (status.delivered) {
-      return <CheckCheck className="h-3 w-3 text-gray-400" />;
+      return <Check className="h-3 w-3" />;
     } else if (status.sent) {
-      return <Check className="h-3 w-3 text-gray-400" />;
-    } else {
-      return <div className="h-3 w-3 rounded-full bg-gray-300 animate-pulse"></div>;
+      return <div className="h-3 w-3 border border-current rounded-full" />;
     }
+    return null;
   };
 
-  // Render file preview based on type
   const renderFilePreview = () => {
     if (!msg.file) return null;
 
@@ -92,45 +77,41 @@ export default function MessageBubble({
 
     if (isImage) {
       return (
-        <div className="relative group/image mt-3">
-          <img 
-            src={msg.file.url} 
-            alt={msg.file.name} 
-            className="max-w-[250px] max-h-[200px] rounded-xl cursor-pointer hover:opacity-90 transition-all duration-200 shadow-lg object-cover" 
-            onClick={() => setShowPreviewModal(true)}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-          <div className="hidden absolute inset-0 bg-gray-100 rounded-xl flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-4xl mb-2">{fileIcon}</div>
-              <p className="text-sm text-gray-600">{msg.file.name}</p>
+        <div className="mt-3 relative group">
+          <div className="relative inline-block">
+            <img 
+              src={msg.file.url} 
+              alt={msg.file.name} 
+              className="max-w-[280px] max-h-[220px] rounded-xl shadow-lg object-cover cursor-pointer hover:opacity-95 transition-all duration-200" 
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            <div className="hidden absolute inset-0 bg-gray-100 rounded-xl flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-4xl mb-2">{fileIcon}</div>
+                <p className="text-sm text-gray-600">{msg.file.name}</p>
+              </div>
             </div>
-          </div>
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/image:bg-opacity-20 transition-all duration-200 rounded-xl flex items-center justify-center">
-            <div className="flex space-x-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPreviewModal(true);
-                }}
-                className="p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 shadow-sm"
-                title="Expand"
-              >
-                <Maximize2 className="h-4 w-4 text-gray-700" />
-              </button>
+            {/* Download button overlay */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDownload(msg.file.url, msg.file.name);
                 }}
-                className="p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 shadow-sm"
+                className="p-2 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full shadow-lg backdrop-blur-sm"
                 title="Download"
               >
-                <Download className="h-4 w-4 text-gray-700" />
+                <Download className="h-4 w-4" />
               </button>
+            </div>
+            {/* File info overlay */}
+            <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-lg backdrop-blur-sm truncate">
+                {msg.file.name}
+              </div>
             </div>
           </div>
         </div>
@@ -140,32 +121,38 @@ export default function MessageBubble({
     if (isVideo) {
       return (
         <div className="mt-3">
-          <video 
-            src={msg.file.url} 
-            className="max-w-[300px] max-h-[200px] rounded-xl shadow-lg"
-            controls
-            preload="metadata"
-            onPlay={() => setVideoPlaying(true)}
-            onPause={() => setVideoPlaying(false)}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-          <div className="hidden mt-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="text-2xl">{fileIcon}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{msg.file.name}</p>
-                <p className="text-xs text-gray-500">{fileSize}</p>
-              </div>
+          <div className="relative">
+            <video 
+              src={msg.file.url} 
+              className="max-w-[300px] max-h-[200px] rounded-xl shadow-lg"
+              controls
+              preload="metadata"
+              onPlay={() => setVideoPlaying(true)}
+              onPause={() => setVideoPlaying(false)}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            {/* Download button overlay */}
+            <div className="absolute top-2 right-2">
               <button
                 onClick={() => handleDownload(msg.file.url, msg.file.name)}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full shadow-lg backdrop-blur-sm"
                 title="Download"
               >
-                <Download className="h-4 w-4 text-gray-600" />
+                <Download className="h-4 w-4" />
               </button>
+            </div>
+          </div>
+          {/* File info below video */}
+          <div className="mt-2 p-2 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200">
+            <div className="flex items-center space-x-2">
+              <div className="text-lg">{fileIcon}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{msg.file.name}</p>
+                <p className="text-xs text-gray-500">{fileSize}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -209,24 +196,13 @@ export default function MessageBubble({
             <p className="text-sm font-semibold text-gray-900 truncate">{msg.file.name}</p>
             <p className="text-xs text-gray-500">{fileSize} • {msg.file.type || 'Unknown type'}</p>
           </div>
-          <div className="flex space-x-2">
-            {canPreview(msg.file.category, msg.file.type) && (
-              <button
-                onClick={() => setShowPreviewModal(true)}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
-                title="Preview"
-              >
-                <Maximize2 className="h-4 w-4 text-gray-600" />
-              </button>
-            )}
-            <button
-              onClick={() => handleDownload(msg.file.url, msg.file.name)}
-              className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
-              title="Download"
-            >
-              <Download className="h-4 w-4 text-gray-600" />
-            </button>
-          </div>
+          <button
+            onClick={() => handleDownload(msg.file.url, msg.file.name)}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+            title="Download"
+          >
+            <Download className="h-4 w-4 text-gray-600" />
+          </button>
         </div>
       </div>
     );
@@ -374,74 +350,6 @@ export default function MessageBubble({
           )}
         </div>
       </div>
-
-      {/* File Preview Modal */}
-      {showPreviewModal && msg.file && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setShowPreviewModal(false)}>
-          <div className="relative max-w-[90vw] max-h-[90vh] bg-white rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 bg-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">{msg.file.name}</h3>
-              <div className="flex space-x-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownload(msg.file.url, msg.file.name);
-                  }}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                  title="Download"
-                >
-                  <Download className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => setShowPreviewModal(false)}
-                  className="p-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-4 max-h-[calc(90vh-80px)] overflow-auto">
-              {isImage ? (
-                <img 
-                  src={msg.file.url} 
-                  alt={msg.file.name} 
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : isVideo ? (
-                <video 
-                  src={msg.file.url} 
-                  controls
-                  className="max-w-full max-h-full rounded-lg"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : isAudio ? (
-                <audio 
-                  src={msg.file.url} 
-                  controls
-                  className="w-full"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : isDocument && msg.file.url.includes('.pdf') ? (
-                <iframe 
-                  src={msg.file.url} 
-                  className="w-full h-[70vh] rounded-lg"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-6xl mb-4">{getFileIcon(msg.file.category || 'other', msg.file.type)}</div>
-                  <p className="text-lg font-semibold text-gray-900 mb-2">{msg.file.name}</p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    {formatFileSize(msg.file.size || 0)} • {msg.file.type || 'Unknown type'}
-                  </p>
-                  <p className="text-sm text-gray-400">Preview not available for this file type</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 } 
