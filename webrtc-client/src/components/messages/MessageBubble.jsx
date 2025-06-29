@@ -76,43 +76,54 @@ export default function MessageBubble({
     const fileSize = formatFileSize(msg.file.size || 0);
 
     if (isImage) {
+      // Track if image failed to load
+      const [imgError, setImgError] = useState(false);
       return (
         <div className="mt-3 relative group">
           <div className="relative inline-block">
-            <img 
-              src={msg.file.url} 
-              alt={msg.file.name} 
-              className="max-w-[280px] max-h-[220px] rounded-xl shadow-lg object-cover cursor-pointer hover:opacity-95 transition-all duration-200" 
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-            <div className="hidden absolute inset-0 bg-gray-100 rounded-xl flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-4xl mb-2">{fileIcon}</div>
-                <p className="text-sm text-gray-600">{msg.file.name}</p>
+            {!imgError ? (
+              <img 
+                src={msg.file.url} 
+                alt={msg.file.name} 
+                className="max-w-[280px] max-h-[220px] rounded-xl shadow-lg object-cover cursor-pointer hover:opacity-95 transition-all duration-200" 
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div className="w-[220px] h-[180px] flex flex-col items-center justify-center bg-gray-100 rounded-xl shadow-lg p-4">
+                <div className="text-5xl mb-2">{fileIcon}</div>
+                <p className="text-sm text-gray-700 font-medium mb-2 text-center break-all max-w-full">{msg.file.name}</p>
+                <button
+                  onClick={() => handleDownload(msg.file.url, msg.file.name)}
+                  className="mt-2 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg"
+                  title="Download"
+                >
+                  <Download className="h-5 w-5" />
+                </button>
               </div>
-            </div>
-            {/* Download button overlay */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownload(msg.file.url, msg.file.name);
-                }}
-                className="p-2 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full shadow-lg backdrop-blur-sm"
-                title="Download"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-            </div>
-            {/* File info overlay */}
-            <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <div className="bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-lg backdrop-blur-sm truncate">
-                {msg.file.name}
+            )}
+            {/* Download button overlay (only if image loads) */}
+            {!imgError && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(msg.file.url, msg.file.name);
+                  }}
+                  className="p-2 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full shadow-lg backdrop-blur-sm"
+                  title="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
               </div>
-            </div>
+            )}
+            {/* File info overlay (only if image loads) */}
+            {!imgError && (
+              <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-lg backdrop-blur-sm truncate">
+                  {msg.file.name}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
