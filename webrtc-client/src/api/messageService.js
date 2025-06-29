@@ -122,38 +122,141 @@ export const downloadFile = async (url, filename, mimeType) => {
       return;
     }
 
-    // For cross-origin files, fetch and create blob
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-    });
+    // For cross-origin files, try multiple approaches
+    try {
+      // First attempt: Fetch with CORS
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up blob URL
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (fetchError) {
+      console.warn('CORS fetch failed, trying download endpoint:', fetchError);
+      
+      // Second attempt: Try the download endpoint
+      try {
+        // Extract filename from URL
+        const urlParts = url.split('/');
+        const originalFilename = urlParts[urlParts.length - 1];
+        
+        // Use the file endpoint
+        const downloadUrl = `${import.meta.env.VITE_API_URL}/api/files/${originalFilename}`;
+        
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`File endpoint failed with status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        return;
+      } catch (downloadEndpointError) {
+        console.warn('File endpoint also failed:', downloadEndpointError);
+      }
+      
+      // Third attempt: Try with no-cors mode
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          mode: 'no-cors',
+        });
+        
+        if (response.type === 'opaque') {
+          // For opaque responses, we can't access the content directly
+          // So we'll fall back to opening in a new tab
+          throw new Error('Opaque response, cannot download directly');
+        }
+      } catch (noCorsError) {
+        console.warn('No-cors fetch also failed:', noCorsError);
+      }
+      
+      // Fourth attempt: Try XMLHttpRequest
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.withCredentials = false;
+        
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            const blob = xhr.response;
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          } else {
+            throw new Error(`XHR failed with status: ${xhr.status}`);
+          }
+        };
+        
+        xhr.onerror = function() {
+          throw new Error('XHR request failed');
+        };
+        
+        xhr.send();
+        return; // Exit early if XHR succeeds
+      } catch (xhrError) {
+        console.warn('XHR also failed:', xhrError);
+      }
+      
+      // Final fallback: Open in new tab
+      console.log('All download methods failed, opening in new tab as fallback');
+      window.open(url, '_blank');
     }
-
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up blob URL
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   } catch (error) {
     console.error('Download failed:', error);
     
-    // Fallback: try to open in new tab
+    // Ultimate fallback: try to open in new tab
     try {
       window.open(url, '_blank');
     } catch (fallbackError) {
