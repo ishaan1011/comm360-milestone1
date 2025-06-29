@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import ScheduleMeetingModal from '../components/ScheduleMeetingModal.jsx';
 import API from '../api/client.js';
 
 const stats = [
@@ -34,6 +35,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scheduling, setScheduling] = useState(false);
 
   useEffect(() => {
     // Fetch active rooms
@@ -220,7 +222,7 @@ export default function DashboardPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/meetings')}
+            onClick={() => setScheduling(true)}
             className="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
           >
             <Calendar className="h-8 w-8 text-green-600 mb-2" />
@@ -238,6 +240,10 @@ export default function DashboardPage() {
           </motion.button>
         </div>
       </div>
+      <ScheduleMeetingModal
+        open={scheduling}
+        onClose={() => setScheduling(false)}
+      />
     </div>
   );
 } 
