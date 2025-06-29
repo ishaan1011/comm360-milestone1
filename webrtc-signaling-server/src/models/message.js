@@ -9,6 +9,9 @@ const fileSchema = new mongoose.Schema({
   url: String,
   name: String,
   type: String,
+  size: Number,
+  category: { type: String, enum: ['image', 'video', 'audio', 'document', 'archive', 'code', 'other'], default: 'other' },
+  filename: String, // Store the actual filename for potential deletion
 }, { _id: false });
 
 const messageSchema = new mongoose.Schema({
