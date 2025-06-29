@@ -340,13 +340,16 @@ export default function MessageBubble({
                 </button>
                 {isOwn && (
                   <>
-                    <button 
-                      onClick={() => onEdit(msg)} 
-                      className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
+                    {/* Only show Edit if no file is attached */}
+                    {!msg.file && (
+                      <button 
+                        onClick={() => onEdit(msg)} 
+                        className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
                     <button 
                       onClick={() => onDelete(messageId)} 
                       className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors"
