@@ -155,7 +155,7 @@ export const downloadFile = async (url, filename, mimeType) => {
     } catch (fetchError) {
       console.warn('CORS fetch failed, trying download endpoint:', fetchError);
       
-      // Second attempt: Try the download endpoint
+      // Second attempt: Try the download endpoint with auth
       try {
         // Extract filename from URL
         const urlParts = url.split('/');
@@ -164,12 +164,21 @@ export const downloadFile = async (url, filename, mimeType) => {
         // Use the file endpoint
         const downloadUrl = `${import.meta.env.VITE_API_URL}/api/files/${originalFilename}`;
         
+        // Get auth token from localStorage
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Content-Type': 'application/octet-stream',
+        };
+        
+        // Add auth header if token exists
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await fetch(downloadUrl, {
           method: 'GET',
           mode: 'cors',
-          headers: {
-            'Content-Type': 'application/octet-stream',
-          },
+          headers,
         });
 
         if (!response.ok) {
@@ -195,8 +204,15 @@ export const downloadFile = async (url, filename, mimeType) => {
         console.warn('File endpoint also failed:', downloadEndpointError);
       }
       
-      // Third attempt: Try with no-cors mode
+      // Third attempt: Try direct URL with different approach (for 426 errors)
       try {
+        // For 426 Upgrade Required errors, try opening in new tab directly
+        if (fetchError.message.includes('426') || fetchError.message.includes('Upgrade Required')) {
+          console.log('Detected 426 error, opening in new tab');
+          window.open(url, '_blank');
+          return;
+        }
+        
         const response = await fetch(url, {
           method: 'GET',
           mode: 'no-cors',
