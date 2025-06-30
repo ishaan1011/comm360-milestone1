@@ -27,6 +27,7 @@ import authMiddleware from './src/middleware/auth.js';
 import conversationRoutes from './src/routes/conversation.js';
 import messageRoutes from './src/routes/message.js';
 import userRoutes from './src/routes/user.js';
+import fileRoutes from './src/routes/file.js';
 import meetingRoutes from './src/routes/meetings.js';
 
 import helmet from 'helmet';
@@ -87,14 +88,17 @@ app.options('*', cors(corsOptions));
 // public: register / login / google / me (must be before authMiddleware)
 app.use('/api/auth', authRoutes);
 
+// File routes should be accessible to authenticated users, so register before auth middleware
+app.use('/api/files', fileRoutes);
+
 app.use(helmet());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
 // ─── Protect all other /api routes with JWT auth ───────────────────────────
-// Apply authMiddleware to all /api routes EXCEPT /api/auth
+// Apply authMiddleware to all /api routes EXCEPT /api/auth and /api/files
 app.use('/api', (req, res, next) => {
-  // Skip auth middleware for auth routes
-  if (req.path.startsWith('/auth')) {
+  // Skip auth middleware for auth routes and file routes
+  if (req.path.startsWith('/auth') || req.path.startsWith('/files')) {
     return next();
   }
   return authMiddleware(req, res, next);
@@ -770,12 +774,78 @@ app.use('/api/meetings', meetingRoutes);
 
 // Serve uploaded message files statically from /uploads/messages at /uploads/messages/*.
 app.use('/uploads/messages', (req, res, next) => {
-  // Add CORS headers for file downloads
+  // Add comprehensive CORS headers for file downloads
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range, Accept-Ranges, Origin, X-Requested-With');
+  res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
+  
+  // Handle preflight requests immediately
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  // Set proper content type based on file extension
+  const filePath = req.path;
+  const ext = path.extname(filePath).toLowerCase();
+  
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.sheet',
+    '.txt': 'text/plain',
+    '.csv': 'text/csv',
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'text/javascript',
+    '.json': 'application/json',
+    '.xml': 'application/xml',
+    '.zip': 'application/zip',
+    '.rar': 'application/x-rar-compressed',
+    '.7z': 'application/x-7z-compressed',
+    '.tar': 'application/x-tar',
+    '.gz': 'application/gzip',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.aac': 'audio/aac',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.avi': 'video/avi',
+    '.mov': 'video/quicktime',
+    '.wmv': 'video/x-ms-wmv'
+  };
+  
+  if (mimeTypes[ext]) {
+    res.setHeader('Content-Type', mimeTypes[ext]);
+  }
+  
+  // Enable range requests for large files
+  res.setHeader('Accept-Ranges', 'bytes');
+  
   next();
-}, express.static(path.join(process.cwd(), 'uploads', 'messages')));
+}, express.static(path.join(process.cwd(), 'uploads', 'messages'), {
+  // Enable range requests and set additional headers
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range, Accept-Ranges, Origin, X-Requested-With');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+  }
+}));
 
 // Listen on the port Render (or local) specifies
 const PORT = process.env.PORT || 8181;

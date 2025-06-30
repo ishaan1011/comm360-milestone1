@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Users, Hash, Plus, Search, MoreVertical, Settings, Star, Trash2, Send, Paperclip, Smile } from 'lucide-react';
+import { User, Users, Hash, Plus, Search, MoreVertical, Settings, Star, Trash2, Send, Paperclip, Smile, MessageCircle, X, Check } from 'lucide-react';
 import SidebarConversation from '../components/messages/SidebarConversation';
 import ChatWindow from '../components/messages/ChatWindow';
 import ChatInput from '../components/messages/ChatInput';
@@ -475,32 +475,47 @@ export default function MessagesPage() {
   const grouped = groupMessagesByDate(messages);
 
   return (
-    <div className={`flex h-[80vh] bg-white rounded-lg shadow-lg overflow-hidden`}>
+    <div className="flex h-[80vh] bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
       {/* Sidebar */}
-      <div className="w-80 bg-secondary-50 border-r border-secondary-200 flex flex-col">
-        <div className="p-4 border-b border-secondary-200 font-bold text-lg flex items-center justify-between">
-          Messages
-          <button 
-            onClick={() => setShowCreateModal(true)} 
-            className="p-1 hover:bg-secondary-100 rounded"
-            title="New Conversation"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
+      <div className="w-80 bg-white/80 backdrop-blur-sm border-r border-gray-200 flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg">
+                <MessageCircle className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+                <p className="text-sm text-gray-600">Connect with your team</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowCreateModal(true)} 
+              className="p-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+              title="New Conversation"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-        <div className="p-2">
+
+        {/* Search */}
+        <div className="p-4 border-b border-gray-100">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-secondary-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search conversations..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white shadow-sm"
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+
+        {/* Conversations List */}
+        <div className="flex-1 overflow-y-auto py-2">
           {(() => {
             console.log('About to render filteredConversations:', filteredConversations);
             return filteredConversations.map(section => {
@@ -508,9 +523,9 @@ export default function MessagesPage() {
               console.log('Section items count:', section.items.length);
               
               return (
-                <div key={section.section} className="mb-4">
-                  <div className="flex items-center px-4 py-2 text-secondary-500 uppercase text-xs font-semibold">
-                    <section.icon className="h-4 w-4 mr-2" />
+                <div key={section.section} className="mb-6">
+                  <div className="flex items-center px-6 py-3 text-gray-500 uppercase text-xs font-bold tracking-wider">
+                    <section.icon className="h-4 w-4 mr-3" />
                     {section.section}
                   </div>
                   {section.items.map(conv => {
@@ -543,53 +558,84 @@ export default function MessagesPage() {
           })()}
         </div>
       </div>
+
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-white/60 backdrop-blur-sm">
         {/* Chat header */}
-        <div className="border-b border-secondary-200 px-6 py-4 font-semibold text-lg bg-white flex items-center justify-between">
-          <div 
-            className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-            onClick={() => selected && setShowDetailsModal(true)}
-          >
-            {selected && selected.avatar ? (
-              <img src={selected.avatar} alt={selected.name || 'Conversation'} className="h-8 w-8 rounded-full object-cover" />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-primary-200 flex items-center justify-center text-primary-700 font-bold">
-                {selected ? getInitials(getConversationDisplayName(selected, user?.id)) : ''}
-              </div>
-            )}
-            <div className="flex flex-col">
-              <span>{selected ? getConversationDisplayName(selected, user?.id) : ''}</span>
-              {selected && (selected.type === 'group' || selected.type === 'community') && (
-                <span className="text-xs text-gray-500 font-normal">
-                  {selected.members?.length || 0} members
-                </span>
-              )}
-            </div>
-            {selected && selected.status && (
-              <span className={`h-3 w-3 rounded-full ${selected.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            {selected && (
-              <button 
-                onClick={() => setShowSettingsModal(true)} 
-                className="p-2 hover:bg-secondary-100 rounded" 
-                title="Conversation Settings"
+        {selected ? (
+          <div className="border-b border-gray-100 px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50">
+            <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center space-x-4 cursor-pointer hover:bg-white/50 p-3 rounded-xl transition-all duration-200"
+                onClick={() => setShowDetailsModal(true)}
               >
-                <Settings className="h-5 w-5" />
-              </button>
-            )}
+                <div className="relative">
+                  {selected.avatar ? (
+                    <img src={selected.avatar} alt={selected.name || 'Conversation'} className="h-12 w-12 rounded-full object-cover shadow-lg" />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                      {getInitials(getConversationDisplayName(selected, user?.id))}
+                    </div>
+                  )}
+                  {selected.status && (
+                    <span className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-3 border-white ${selected.status === 'online' ? 'bg-green-500' : 'bg-gray-400'} shadow-md`}></span>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-lg font-bold text-gray-900">{getConversationDisplayName(selected, user?.id)}</h2>
+                  {selected && (selected.type === 'group' || selected.type === 'community') && (
+                    <p className="text-sm text-gray-600">
+                      {selected.members?.length || 0} members
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {selected && (
+                  <button 
+                    onClick={() => setShowSettingsModal(true)} 
+                    className="p-2 rounded-xl hover:bg-white/50 transition-all duration-200 text-gray-500 hover:text-gray-700" 
+                    title="Conversation Settings"
+                  >
+                    <Settings className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-        {/* Reply context */}
-        {replyTo && (
-          <div className="px-6 py-2 bg-secondary-100 text-secondary-700 flex items-center space-x-2">
-            <span>Replying to:</span>
-            <span className="italic truncate max-w-xs">{replyTo.text || replyTo.file?.name}</span>
-            <button onClick={() => setReplyTo(null)} className="ml-2 text-secondary-400 hover:text-secondary-600">×</button>
+        ) : (
+          <div className="border-b border-gray-100 px-6 py-8 bg-gradient-to-r from-gray-50 to-blue-50">
+            <div className="text-center">
+              <div className="p-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <MessageCircle className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome to Messages</h2>
+              <p className="text-gray-600">Select a conversation to start chatting</p>
+            </div>
           </div>
         )}
+
+        {/* Reply context */}
+        {replyTo && (
+          <div className="px-6 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                <MessageCircle className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">Replying to:</p>
+                <p className="text-sm text-gray-600 truncate">{replyTo.text || replyTo.file?.name}</p>
+              </div>
+              <button 
+                onClick={() => setReplyTo(null)} 
+                className="p-1 rounded-full hover:bg-white/50 transition-colors text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Chat messages */}
         <ChatWindow
           grouped={grouped}
@@ -613,6 +659,7 @@ export default function MessagesPage() {
           messageStatus={chatSocket.messageStatus}
           onlineUsers={chatSocket.onlineUsers}
         />
+
         {/* Chat input */}
         <ChatInput
           input={input}
@@ -624,10 +671,22 @@ export default function MessagesPage() {
           onShowEmojiPicker={() => setShowEmojiPicker('input')}
           onTyping={handleTyping}
         />
+
+        {/* Notification */}
         {notification && (
-          <div className="fixed top-6 right-6 z-50 bg-primary-600 text-white px-4 py-2 rounded shadow-lg animate-fade-in">
-            {notification.message}
-            <button onClick={() => setNotification(null)} className="ml-4 text-white">×</button>
+          <div className="fixed top-6 right-6 z-50 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-xl shadow-2xl animate-in slide-in-from-right-4 duration-300">
+            <div className="flex items-center space-x-3">
+              <div className="p-1 rounded-full bg-white/20">
+                <Check className="h-4 w-4" />
+              </div>
+              <span className="font-medium">{notification.message}</span>
+              <button 
+                onClick={() => setNotification(null)} 
+                className="ml-4 text-white/80 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -653,9 +712,9 @@ export default function MessagesPage() {
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
         conversation={selected}
-        currentUserId={user?.id}
         onConversationUpdated={handleConversationUpdated}
-        onConversationDeleted={() => handleConversationDeleted(selected?._id)}
+        onConversationDeleted={handleConversationDeleted}
+        currentUserId={user?.id}
       />
 
       {/* Conversation Details Modal */}
@@ -664,7 +723,6 @@ export default function MessagesPage() {
         onClose={() => setShowDetailsModal(false)}
         conversation={selected}
         currentUserId={user?.id}
-        onConversationUpdated={handleConversationUpdated}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Smile, Edit, Trash2, Reply, Download, X, Maximize2, Check, CheckCheck } from 'lucide-react';
+import { Smile, Edit, Trash2, Reply, Download, X, Check, CheckCheck, Play, Pause, Volume2, FileText, Code, Archive } from 'lucide-react';
+import { downloadFile, getFileIcon, formatFileSize, canPreview, getPreviewUrl } from '../../api/messageService';
 
 export default function MessageBubble({
   msg,
@@ -21,7 +22,8 @@ export default function MessageBubble({
   messageStatus,
 }) {
   const messageId = msg._id || msg.id;
-  const [showImageModal, setShowImageModal] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
   
   // Handle populated sender object or sender ID
   let senderName = 'Unknown';
@@ -37,68 +39,184 @@ export default function MessageBubble({
     senderName = msg.senderName;
   }
 
-  const handleDownload = (url, filename) => {
-    // Create a proper download link
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    
-    // For cross-origin files, we need to fetch and create a blob
-    if (url.startsWith('http')) {
-      fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.blob();
-        })
-        .then(blob => {
-          const blobUrl = URL.createObjectURL(blob);
-          link.href = blobUrl;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
-        })
-        .catch(error => {
-          console.error('Error downloading file:', error);
-          // Fallback: try to open in new tab
-          window.open(url, '_blank');
-        });
-    } else {
-      // For same-origin files
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const handleDownload = async (url, filename) => {
+    try {
+      await downloadFile(url, filename, msg.file?.type);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // You could show a notification here
     }
   };
 
   const isImage = msg.file && msg.file.type && msg.file.type.startsWith('image/');
-  
-  // Get message status
-  const status = messageStatus?.get(messageId) || { sent: true, delivered: false, read: false };
-  
-  // Render status indicator
+  const isVideo = msg.file && msg.file.type && msg.file.type.startsWith('video/');
+  const isAudio = msg.file && msg.file.type && msg.file.type.startsWith('audio/');
+  const isDocument = msg.file && msg.file.type && (msg.file.type.startsWith('application/pdf') || msg.file.type.includes('document') || msg.file.type.includes('spreadsheet') || msg.file.type.includes('presentation'));
+
   const renderStatusIndicator = () => {
-    if (!isOwn) return null;
+    if (!messageStatus) return null;
     
+    const status = messageStatus[messageId];
+    if (!status) return null;
+
     if (status.read) {
-      return <CheckCheck className="h-3 w-3 text-blue-500" />;
+      return <CheckCheck className="h-3 w-3" />;
     } else if (status.delivered) {
-      return <CheckCheck className="h-3 w-3 text-gray-400" />;
+      return <Check className="h-3 w-3" />;
     } else if (status.sent) {
-      return <Check className="h-3 w-3 text-gray-400" />;
-    } else {
-      return <div className="h-3 w-3 rounded-full bg-gray-300 animate-pulse"></div>;
+      return <div className="h-3 w-3 border border-current rounded-full" />;
     }
+    return null;
+  };
+
+  const renderFilePreview = () => {
+    if (!msg.file) return null;
+
+    const fileIcon = getFileIcon(msg.file.category || 'other', msg.file.type);
+    const fileSize = formatFileSize(msg.file.size || 0);
+
+    if (isImage) {
+      // Track if image failed to load
+      const [imgError, setImgError] = useState(false);
+      return (
+        <div className="mt-3 relative group">
+          <div className="relative inline-block">
+            {!imgError ? (
+              <img 
+                src={msg.file.url} 
+                alt={msg.file.name} 
+                className="max-w-[280px] max-h-[220px] rounded-xl shadow-lg object-cover cursor-pointer hover:opacity-95 transition-all duration-200" 
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div className="w-[220px] h-[180px] flex flex-col items-center justify-center bg-gray-100 rounded-xl shadow-lg p-4">
+                <div className="text-5xl mb-2">{fileIcon}</div>
+                <p className="text-sm text-gray-700 font-medium mb-2 text-center break-all max-w-full">{msg.file.name}</p>
+                <button
+                  onClick={() => handleDownload(msg.file.url, msg.file.name)}
+                  className="mt-2 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg"
+                  title="Download"
+                >
+                  <Download className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+            {/* Download button overlay (only if image loads) */}
+            {!imgError && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(msg.file.url, msg.file.name);
+                  }}
+                  className="p-2 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full shadow-lg backdrop-blur-sm"
+                  title="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {/* File info overlay (only if image loads) */}
+            {!imgError && (
+              <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-lg backdrop-blur-sm truncate">
+                  {msg.file.name}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (isVideo) {
+      return (
+        <div className="mt-3">
+          <div className="relative">
+            <video 
+              src={msg.file.url} 
+              className="max-w-[300px] max-h-[200px] rounded-xl shadow-lg"
+              controls
+              preload="metadata"
+              onPlay={() => setVideoPlaying(true)}
+              onPause={() => setVideoPlaying(false)}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            {/* Download button overlay */}
+            <div className="absolute top-2 right-2">
+              <button
+                onClick={() => handleDownload(msg.file.url, msg.file.name)}
+                className="p-2 bg-black bg-opacity-70 hover:bg-opacity-90 text-white rounded-full shadow-lg backdrop-blur-sm"
+                title="Download"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          {/* File info below video */}
+          <div className="mt-2 p-2 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200">
+            <div className="flex items-center space-x-2">
+              <div className="text-lg">{fileIcon}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{msg.file.name}</p>
+                <p className="text-xs text-gray-500">{fileSize}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isAudio) {
+      return (
+        <div className="mt-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="text-2xl">{fileIcon}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{msg.file.name}</p>
+              <p className="text-xs text-gray-500">{fileSize}</p>
+            </div>
+            <audio 
+              src={msg.file.url} 
+              controls
+              className="flex-1"
+              onPlay={() => setAudioPlaying(true)}
+              onPause={() => setAudioPlaying(false)}
+            />
+            <button
+              onClick={() => handleDownload(msg.file.url, msg.file.name)}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+              title="Download"
+            >
+              <Download className="h-4 w-4 text-gray-600" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // For documents, code files, archives, and other files
+    return (
+      <div className="mt-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
+        <div className="flex items-center space-x-3">
+          <div className="text-2xl">{fileIcon}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{msg.file.name}</p>
+            <p className="text-xs text-gray-500">{fileSize} • {msg.file.type || 'Unknown type'}</p>
+          </div>
+          <button
+            onClick={() => handleDownload(msg.file.url, msg.file.name)}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
+            title="Download"
+          >
+            <Download className="h-4 w-4 text-gray-600" />
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -167,66 +285,7 @@ export default function MessageBubble({
               </div>
 
               {/* File attachments */}
-              {msg.file && (
-                <div className="mt-3">
-                  {isImage ? (
-                    <div className="relative group/image">
-                      <img 
-                        src={msg.file.url} 
-                        alt={msg.file.name} 
-                        className="max-w-[250px] max-h-[200px] rounded-lg cursor-pointer hover:opacity-90 transition-all duration-200 shadow-sm object-cover" 
-                        onClick={() => setShowImageModal(true)}
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/image:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                        <div className="opacity-0 group-hover/image:opacity-100 flex space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowImageModal(true);
-                            }}
-                            className="p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 shadow-sm"
-                            title="Expand"
-                          >
-                            <Maximize2 className="h-4 w-4 text-gray-700" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(msg.file.url, msg.file.name);
-                            }}
-                            className="p-2 bg-white bg-opacity-90 rounded-full hover:bg-opacity-100 shadow-sm"
-                            title="Download"
-                          >
-                            <Download className="h-4 w-4 text-gray-700" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex-1 min-w-0">
-                        <a 
-                          href={msg.file.url} 
-                          download={msg.file.name} 
-                          className="text-blue-600 hover:text-blue-800 font-medium truncate block" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          {msg.file.name}
-                        </a>
-                        <p className="text-xs text-gray-500 mt-1 truncate">{msg.file.type || 'Unknown type'}</p>
-                      </div>
-                      <button
-                        onClick={() => handleDownload(msg.file.url, msg.file.name)}
-                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex-shrink-0"
-                        title="Download"
-                      >
-                        <Download className="h-4 w-4 text-gray-600" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {renderFilePreview()}
 
               {/* Edited indicator */}
               {msg.edited && (
@@ -271,7 +330,7 @@ export default function MessageBubble({
               {/* Message actions */}
               <div className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex space-x-1 transition-opacity duration-200 ${
                 isOwn ? 'bg-blue-500 bg-opacity-20' : 'bg-gray-100'
-              } rounded-lg p-1`}>
+              }`}>
                 <button 
                   className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors" 
                   onClick={() => onReply(msg)}
@@ -281,13 +340,16 @@ export default function MessageBubble({
                 </button>
                 {isOwn && (
                   <>
-                    <button 
-                      onClick={() => onEdit(msg)} 
-                      className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
+                    {/* Only show Edit if no file is attached */}
+                    {!msg.file && (
+                      <button 
+                        onClick={() => onEdit(msg)} 
+                        className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
                     <button 
                       onClick={() => onDelete(messageId)} 
                       className="p-1 hover:bg-white hover:bg-opacity-30 rounded transition-colors"
@@ -302,36 +364,6 @@ export default function MessageBubble({
           )}
         </div>
       </div>
-
-      {/* Image Preview Modal */}
-      {showImageModal && isImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setShowImageModal(false)}>
-          <div className="relative max-w-[90vw] max-h-[90vh]">
-            <button
-              onClick={() => setShowImageModal(false)}
-              className="absolute top-4 right-4 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 z-10 transition-colors"
-            >
-              <X className="h-6 w-6" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownload(msg.file.url, msg.file.name);
-              }}
-              className="absolute top-4 left-4 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 z-10 transition-colors"
-              title="Download"
-            >
-              <Download className="h-6 w-6" />
-            </button>
-            <img 
-              src={msg.file.url} 
-              alt={msg.file.name} 
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 } 
