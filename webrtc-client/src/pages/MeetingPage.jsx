@@ -31,13 +31,13 @@ export default function MeetingPage() {
 
     (async () => {
       // a) Load RTP Capabilities
-      const { data: rtpCaps } = await API.get('/sfu/rtpCapabilities');
+      const { data: rtpCaps } = await API.get('/api/sfu/rtpCapabilities');
       const d = new Device();
       await d.load({ routerRtpCapabilities: rtpCaps });
       setDevice(d);
 
       // b) Create Send Transport
-      const { data: sendInfo } = await API.post('/sfu/transports', {
+      const { data: sendInfo } = await API.post('/api/sfu/transports', {
         direction: 'send',
         peerId: user.id
       });
@@ -47,7 +47,7 @@ export default function MeetingPage() {
            .then(cb).catch(eb);
       });
       sendT.on('produce', async ({ kind, rtpParameters }, cb, eb) => {
-        const { data } = await API.post('/sfu/produce', {
+        const { data } = await API.post('/api/sfu/produce', {
           transportId: sendT.id,
           kind,
           rtpParameters,
@@ -58,13 +58,13 @@ export default function MeetingPage() {
       setSendTransport(sendT);
 
       // c) Create Recv Transport
-      const { data: recvInfo } = await API.post('/sfu/transports', {
+      const { data: recvInfo } = await API.post('/api/sfu/transports', {
         direction: 'recv',
         peerId: user.id
       });
       const recvT = d.createRecvTransport(recvInfo);
       recvT.on('connect', ({ dtlsParameters }, cb, eb) => {
-        API.post(`/sfu/transports/${recvT.id}/connect`, { dtlsParameters })
+        API.post(`/api/sfu/transports/${recvT.id}/connect`, { dtlsParameters })
            .then(cb).catch(eb);
       });
       setRecvTransport(recvT);
@@ -75,9 +75,9 @@ export default function MeetingPage() {
       local.getTracks().forEach(track => sendT.produce({ track }));
 
       // e) Consume Existing Producers
-      const { data: { producers } } = await API.get('/sfu/producers');
+      const { data: { producers } } = await API.get('/api/sfu/producers');
       for (const prodId of producers) {
-        const { data: cinfo } = await API.post('/sfu/consume', {
+        const { data: cinfo } = await API.post('/api/sfu/consume', {
           transportId: recvT.id,
           producerId: prodId,
           rtpCapabilities: d.rtpCapabilities
